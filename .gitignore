@@ -1,0 +1,22 @@
+.DS_Store
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Node/Vite
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# IDE
+.idea/
