@@ -1,3 +1,4 @@
+from app.enums.presets import get_preset_label
 from app.models.figure import Figure
 from app.models.user import User
 
@@ -76,6 +77,18 @@ def build_telegram_name_prompt(user: User | None) -> str:
     )
 
 
+def build_selected_preset_prompt(value: str | None) -> str:
+    if not value:
+        return "not selected"
+
+    readable_value = value.replace("_", " ")
+    label = get_preset_label(value)
+    if label == value:
+        return readable_value
+
+    return f"{readable_value} ({label}; selected id: {value})"
+
+
 def build_figure_prompt(
     figure: Figure,
     user: User | None = None,
@@ -112,9 +125,20 @@ def build_figure_prompt(
             build_telegram_name_prompt(user),
             "",
             "User-selected design:",
-            f"Theme/vibe: {figure.selected_vibe}",
-            f"Accessory: {figure.selected_accessory}",
-            f"Background inside the box: {figure.selected_background}",
+            f"Theme/vibe: {build_selected_preset_prompt(figure.selected_vibe)}",
+            f"Accessory: {build_selected_preset_prompt(figure.selected_accessory)}",
+            "Background inside the box: "
+            f"{build_selected_preset_prompt(figure.selected_background)}",
+            "",
+            "Mandatory selected detail rules:",
+            "Every selected design detail is mandatory and must be visible in "
+            "the final image.",
+            "Do not omit the selected theme/vibe, accessory, or background, "
+            "even if one detail is subtle.",
+            "Show the theme/vibe through the figure outfit, pose, package art, "
+            "or scene cues. Show the accessory clearly in the figure's hands, "
+            "beside the figure, or attached to the package. Make the selected "
+            "background visible inside the box behind the figure.",
             "",
             "Package palette style:",
             build_rarity_style_prompt(prompt_rarity),

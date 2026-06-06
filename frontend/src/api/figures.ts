@@ -12,6 +12,8 @@ import {
   type FigurePresetsUpdate,
 } from "../types/figure";
 
+export type FigureCardVariant = "normal" | "foil";
+
 export async function getMyFigure(): Promise<Figure> {
   return apiRequest<Figure>("/figures/me");
 }
@@ -33,7 +35,9 @@ export async function updateMyFigurePresets(
   });
 }
 
-export async function downloadMyFigureCard(): Promise<Blob> {
+export async function downloadMyFigureCard(
+  variant: FigureCardVariant = "normal",
+): Promise<Blob> {
   const headers = new Headers();
   const token = getAccessToken();
 
@@ -41,9 +45,12 @@ export async function downloadMyFigureCard(): Promise<Blob> {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/figures/me/card.png`, {
-    headers,
-  });
+  const response = await fetch(
+    `${getApiBaseUrl()}/figures/me/card.png${getCardVariantQuery(variant)}`,
+    {
+      headers,
+    },
+  );
 
   if (!response.ok) {
     const data = await parseDownloadError(response);
@@ -62,8 +69,18 @@ export async function downloadMyFigureCard(): Promise<Blob> {
   return response.blob();
 }
 
-export function getPublicFigureCardUrl(figureId: string): string {
-  return `${getApiBaseUrl()}/figures/${encodeURIComponent(figureId)}/card.png`;
+export function getPublicFigureCardUrl(
+  figureId: string,
+  variant: FigureCardVariant = "normal",
+): string {
+  return (
+    `${getApiBaseUrl()}/figures/${encodeURIComponent(figureId)}/card.png` +
+    getCardVariantQuery(variant)
+  );
+}
+
+function getCardVariantQuery(variant: FigureCardVariant): string {
+  return variant === "foil" ? "?variant=foil" : "";
 }
 
 async function parseDownloadError(response: Response): Promise<unknown> {

@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 
 import { FigureCard } from "../components/FigureCard";
 import { type UserResponse } from "../api/auth";
-import { downloadMyFigureCard, getPublicFigureCardUrl } from "../api/figures";
+import {
+  downloadMyFigureCard,
+  getPublicFigureCardUrl,
+  type FigureCardVariant,
+} from "../api/figures";
 import { Button } from "../components/ui/Button";
 import { ErrorMessage } from "../components/ui/ErrorMessage";
 import { GlassPanel } from "../components/ui/GlassPanel";
@@ -18,15 +22,38 @@ type MyFigurePageProps = {
   user: UserResponse;
 };
 
+type DownloadStatus = {
+  isComplete: boolean;
+  isDownloading: boolean;
+};
+
+type DownloadStatusByVariant = Record<FigureCardVariant, DownloadStatus>;
+
+const initialDownloadStatusByVariant: DownloadStatusByVariant = {
+  normal: {
+    isComplete: false,
+    isDownloading: false,
+  },
+  foil: {
+    isComplete: false,
+    isDownloading: false,
+  },
+};
+
 export function MyFigurePage({ figure, user }: MyFigurePageProps) {
   const [showFoilVersion, setShowFoilVersion] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isDownloadComplete, setIsDownloadComplete] = useState(false);
+  const [downloadStatusByVariant, setDownloadStatusByVariant] = useState(
+    initialDownloadStatusByVariant,
+  );
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const modelUsername = getTelegramUsernameLabel(user);
   const modelProfileUrl = getTelegramProfileUrl(user);
   const foilFigure = getFoilFigure(figure);
+  const displayedVariant = showFoilVersion && foilFigure ? "foil" : "normal";
   const displayedFigure = showFoilVersion && foilFigure ? foilFigure : figure;
+  const currentDownloadStatus = downloadStatusByVariant[displayedVariant];
+  const isDownloading = currentDownloadStatus.isDownloading;
+  const isDownloadComplete = currentDownloadStatus.isComplete;
   const showPrompt = Boolean(
     displayedFigure.prompt &&
       (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === "local"),
@@ -38,38 +65,77 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
     }
   }, [figure.foil_image_url]);
 
+  useEffect(() => {
+    setDownloadStatusByVariant(initialDownloadStatusByVariant);
+  }, [figure.id, figure.image_url, figure.foil_image_url]);
+
   async function handleDownload(): Promise<void> {
-    if (isDownloadComplete || isDownloading) {
+    const downloadVariant = displayedVariant;
+    const downloadStatus = downloadStatusByVariant[downloadVariant];
+
+    if (downloadStatus.isComplete || downloadStatus.isDownloading) {
       return;
     }
 
-    setIsDownloading(true);
-    setIsDownloadComplete(false);
+    setVariantDownloadStatus(downloadVariant, {
+      isComplete: false,
+      isDownloading: true,
+    });
     setDownloadError(null);
 
     try {
-      const fileName = buildDownloadFileName(figure.display_number);
-      if (requestTelegramDownload(getPublicFigureCardUrl(figure.id), fileName)) {
-        setIsDownloadComplete(true);
+      const fileName = buildDownloadFileName(
+        figure.display_number,
+        downloadVariant,
+      );
+      if (
+        requestTelegramDownload(
+          getPublicFigureCardUrl(figure.id, downloadVariant),
+          fileName,
+        )
+      ) {
+        setVariantDownloadStatus(downloadVariant, {
+          isComplete: true,
+          isDownloading: false,
+        });
         return;
       }
 
       triggerDownload(
-        await downloadMyFigureCard(),
+        await downloadMyFigureCard(downloadVariant),
         fileName,
       );
-      setIsDownloadComplete(true);
+      setVariantDownloadStatus(downloadVariant, {
+        isComplete: true,
+        isDownloading: false,
+      });
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Failed to download figure card", error);
       }
-      setIsDownloadComplete(false);
+      setVariantDownloadStatus(downloadVariant, {
+        isComplete: false,
+        isDownloading: false,
+      });
       setDownloadError(
         "Не удалось скачать карточку. Обнови экран и попробуй ещё раз.",
       );
     } finally {
-      setIsDownloading(false);
+      setVariantDownloadStatus(downloadVariant, { isDownloading: false });
     }
+  }
+
+  function setVariantDownloadStatus(
+    variant: FigureCardVariant,
+    status: Partial<DownloadStatus>,
+  ): void {
+    setDownloadStatusByVariant((current) => ({
+      ...current,
+      [variant]: {
+        ...current[variant],
+        ...status,
+      },
+    }));
   }
 
   return (
@@ -213,9 +279,13 @@ function DownloadSpinnerIcon() {
   );
 }
 
-function buildDownloadFileName(displayNumber: string): string {
+function buildDownloadFileName(
+  displayNumber: string,
+  variant: FigureCardVariant = "normal",
+): string {
   const normalizedNumber = displayNumber.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]+/g, "");
-  return `vladblog-collectible-${normalizedNumber || "figure"}.png`;
+  const variantSuffix = variant === "foil" ? "-foil" : "";
+  return `vladblog-collectible-${normalizedNumber || "figure"}${variantSuffix}.png`;
 }
 
 function triggerDownload(blob: Blob, fileName: string): void {

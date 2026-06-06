@@ -187,13 +187,17 @@ describe("frontend styles", () => {
     expect(myFigurePage).not.toContain("finalRarityStyles");
     expect(myFigurePage).not.toContain("Поделиться скоро");
     expect(myFigurePage).toContain("downloadMyFigureCard");
+    expect(myFigurePage).toContain("const displayedVariant = showFoilVersion && foilFigure ? \"foil\" : \"normal\"");
+    expect(myFigurePage).toContain("downloadStatusByVariant");
+    expect(myFigurePage).toContain("getPublicFigureCardUrl(figure.id, downloadVariant)");
+    expect(myFigurePage).toContain("downloadMyFigureCard(downloadVariant)");
     expect(myFigurePage).not.toContain(">Скачать результат<");
     expect(myFigurePage).toContain('aria-label={isDownloadComplete ? "Скачано" : "Скачать результат"}');
     expect(myFigurePage).toContain("download-button");
     expect(myFigurePage).toContain("download-icon");
     expect(myFigurePage).toContain("download-glyph");
     expect(myFigurePage).toContain("CheckIcon");
-    expect(myFigurePage).toContain("if (isDownloadComplete || isDownloading)");
+    expect(myFigurePage).toContain("if (downloadStatus.isComplete || downloadStatus.isDownloading)");
     expect(myFigurePage).toContain("onClick={isDownloadComplete ? undefined : handleDownload}");
     expect(myFigurePage).toContain("isDownloadComplete");
     expect(myFigurePage).toContain("download-complete");

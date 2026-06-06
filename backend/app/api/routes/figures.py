@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
@@ -37,6 +37,7 @@ from app.services.share_cards import render_figure_share_card
 
 router = APIRouter(prefix="/figures", tags=["figures"])
 logger = logging.getLogger(__name__)
+CardVariant = Literal["normal", "foil"]
 
 
 def _preset_options(options: tuple[tuple[str, str], ...]) -> list[PresetOption]:
@@ -82,6 +83,7 @@ async def get_my_figure(
 async def download_my_figure_card(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    variant: CardVariant = "normal",
 ) -> Response:
     figure = await FigureService().get_my_figure(session, current_user)
     if figure is None:
@@ -89,19 +91,16 @@ async def download_my_figure_card(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Figure not found",
         )
-    if figure.status != "completed" or not figure.image_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Figure image is not ready",
-        )
+    _ensure_card_variant_ready(figure, variant)
 
-    return _figure_card_response(figure, current_user)
+    return _figure_card_response(figure, current_user, variant=variant)
 
 
 @router.get("/{figure_id}/card.png")
 async def download_public_figure_card(
     figure_id: UUID,
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    variant: CardVariant = "normal",
 ) -> Response:
     figure = await session.get(Figure, figure_id)
     if figure is None:
@@ -109,11 +108,7 @@ async def download_public_figure_card(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Figure not found",
         )
-    if figure.status != "completed" or not figure.image_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Figure image is not ready",
-        )
+    _ensure_card_variant_ready(figure, variant)
 
     user = await session.get(User, figure.user_id)
     if user is None:
@@ -125,8 +120,22 @@ async def download_public_figure_card(
     return _figure_card_response(
         figure,
         user,
+        variant=variant,
         extra_headers={"Access-Control-Allow-Origin": "https://web.telegram.org"},
     )
+
+
+def _ensure_card_variant_ready(figure: Figure, variant: CardVariant) -> None:
+    if figure.status != "completed" or not figure.image_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Figure image is not ready",
+        )
+    if variant == "foil" and not figure.foil_image_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Foil figure image is not ready",
+        )
 
 
 @router.post("/me/generate", response_model=FigureGenerationResponse)
@@ -202,13 +211,22 @@ async def create_my_figure(
 def _figure_card_response(
     figure: Figure,
     user: User,
+    *,
+    variant: CardVariant = "normal",
     extra_headers: dict[str, str] | None = None,
 ) -> Response:
-    image = render_figure_share_card(figure, user)
+    image = render_figure_share_card(
+        figure,
+        user,
+        image_url=figure.foil_image_url if variant == "foil" else figure.image_url,
+        rarity=figure.foil_rarity if variant == "foil" else figure.rarity,
+    )
     file_number = figure.display_number.replace("#", "") or "figure"
+    variant_suffix = "-foil" if variant == "foil" else ""
     headers = {
         "Content-Disposition": (
-            f'attachment; filename="vladblog-collectible-{file_number}.png"'
+            f'attachment; filename="vladblog-collectible-'
+            f'{file_number}{variant_suffix}.png"'
         )
     }
     if extra_headers:

@@ -42,6 +42,21 @@ def test_build_figure_prompt_uses_safe_collectible_package_template() -> None:
     assert "standalone digit" not in prompt.lower()
 
 
+def test_build_figure_prompt_makes_each_selected_preset_mandatory() -> None:
+    figure = make_prompt_figure()
+    figure.selected_vibe = "streamer"
+    figure.selected_accessory = "dice_set"
+    figure.selected_background = "jazz_club"
+
+    prompt = build_figure_prompt(figure)
+
+    assert "Theme/vibe: streamer (Стример" in prompt
+    assert "Accessory: dice set (Набор кубиков" in prompt
+    assert "Background inside the box: jazz club (Джаз-клуб" in prompt
+    assert "Every selected design detail is mandatory" in prompt
+    assert "Do not omit the selected theme/vibe, accessory, or background" in prompt
+
+
 def test_build_figure_prompt_adds_reference_photo_instruction() -> None:
     prompt = build_figure_prompt(make_prompt_figure("uploaded"))
 

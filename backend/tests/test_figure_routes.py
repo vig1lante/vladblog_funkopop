@@ -261,6 +261,14 @@ def test_get_figure_presets_returns_available_options(client: TestClient) -> Non
     assert response.status_code == 200
     payload = response.json()
     assert payload["colors"][0] == {"value": "red", "label": "Красный"}
+    vibe_labels = {option["value"]: option["label"] for option in payload["vibes"]}
+    assert vibe_labels["ai_researcher"] == "ИИ-исследователь"
+    assert vibe_labels["dj"] == "Диджей"
+    assert vibe_labels["tabletop_rpg"] == "Фан настольных ролевых игр"
+    assert vibe_labels["dark_academia"] == "Тёмная академия"
+    assert vibe_labels["cottagecore"] == "Коттеджкор"
+    assert vibe_labels["lofi"] == "Лоу-фай"
+    assert vibe_labels["k_pop"] == "Кей-поп"
     assert [option["value"] for option in payload["rarities"]] == [
         "Epic",
         "Mythic",
@@ -763,6 +771,25 @@ def test_download_my_figure_card_returns_final_png(
         "https://web.telegram.org"
     )
     assert public_response.content.startswith(b"\x89PNG\r\n\x1a\n")
+
+    foil_response = client.get("/figures/me/card.png?variant=foil", headers=headers)
+    assert foil_response.status_code == 200
+    assert foil_response.headers["content-type"] == "image/png"
+    assert foil_response.headers["content-disposition"] == (
+        'attachment; filename="vladblog-collectible-0001-foil.png"'
+    )
+    assert foil_response.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert foil_response.content != response.content
+
+    public_foil_response = client.get(
+        f"/figures/{generated_payload['figure']['id']}/card.png?variant=foil"
+    )
+    assert public_foil_response.status_code == 200
+    assert public_foil_response.headers["content-type"] == "image/png"
+    assert public_foil_response.headers["access-control-allow-origin"] == (
+        "https://web.telegram.org"
+    )
+    assert public_foil_response.content.startswith(b"\x89PNG\r\n\x1a\n")
 
 
 def test_download_my_figure_card_requires_completed_image(

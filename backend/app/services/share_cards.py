@@ -48,8 +48,15 @@ FONT_CANDIDATES = (
 )
 
 
-def render_figure_share_card(figure: Figure, user: User) -> bytes:
-    accent, accent_2 = RARITY_COLORS.get(figure.rarity, RARITY_COLORS["Legendary"])
+def render_figure_share_card(
+    figure: Figure,
+    user: User,
+    *,
+    image_url: str | None = None,
+    rarity: str | None = None,
+) -> bytes:
+    card_rarity = rarity or figure.rarity
+    accent, accent_2 = RARITY_COLORS.get(card_rarity, RARITY_COLORS["Legendary"])
     image = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), "#0b0b12")
     draw = ImageDraw.Draw(image)
 
@@ -67,7 +74,7 @@ def render_figure_share_card(figure: Figure, user: User) -> bytes:
         CARD_PADDING + 48 + IMAGE_SIZE,
         CARD_PADDING + 48 + IMAGE_SIZE,
     )
-    figure_image = _load_figure_image(figure.image_url)
+    figure_image = _load_figure_image(image_url or figure.image_url)
     if figure_image is not None:
         _paste_cover(image, figure_image, image_box, radius=50)
     else:
@@ -94,12 +101,12 @@ def render_figure_share_card(figure: Figure, user: User) -> bytes:
         _font(88, bold=True),
         accent,
     )
-    _draw_rarity_pill(draw, figure.rarity.upper(), content_y + 100, accent, accent_2)
+    _draw_rarity_pill(draw, card_rarity.upper(), content_y + 100, accent, accent_2)
     _draw_attributes(
         draw,
         [
             ("Модель", _user_label(user)),
-            ("Редкость", RARITY_DROP_RATES.get(figure.rarity, "Неизвестно")),
+            ("Редкость", RARITY_DROP_RATES.get(card_rarity, "Неизвестно")),
             ("Вайб", _preset_label(figure.selected_vibe)),
             ("Аксессуар", _preset_label(figure.selected_accessory)),
             ("Фон", _preset_label(figure.selected_background)),
