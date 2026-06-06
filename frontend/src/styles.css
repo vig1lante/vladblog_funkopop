@@ -354,11 +354,32 @@ input[type="file"] {
 
 .figure-image-stage {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: 0;
   background:
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--style-accent) 12%, transparent), transparent 38%),
     transparent;
   border-radius: 20px;
+}
+
+.figure-image-stage::before,
+.figure-image-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.figure-image-stage::before {
+  z-index: 1;
+  opacity: 0;
+}
+
+.figure-image-stage::after {
+  z-index: 3;
+  opacity: 0;
 }
 
 .figure-image-placeholder {
@@ -376,6 +397,8 @@ input[type="file"] {
 }
 
 .figure-image {
+  position: relative;
+  z-index: 2;
   width: 100%;
   aspect-ratio: 1;
   display: block;
@@ -386,6 +409,18 @@ input[type="file"] {
     0 0 22px color-mix(in srgb, var(--style-glow) 42%, transparent),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   object-fit: cover;
+}
+
+.figure-foil-underlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transform: scale(1.08);
+  filter: saturate(2) contrast(1.12) blur(2.5px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  user-select: none;
 }
 
 .figure-card-body {
@@ -807,6 +842,44 @@ input[type="file"] {
 
 .rarity-power-foil .figure-card-body::before {
   animation: foilSparkle 3.2s ease-in-out infinite;
+}
+
+.rarity-power-foil .figure-foil-underlay,
+.rarity-power-foil-epic .figure-foil-underlay,
+.rarity-power-foil-mythic .figure-foil-underlay,
+.rarity-power-foil-legendary .figure-foil-underlay,
+.rarity-power-foil-founder .figure-foil-underlay {
+  opacity: 0.82;
+}
+
+.rarity-power-foil .figure-image-stage::before,
+.rarity-power-foil-epic .figure-image-stage::before,
+.rarity-power-foil-mythic .figure-image-stage::before,
+.rarity-power-foil-legendary .figure-image-stage::before,
+.rarity-power-foil-founder .figure-image-stage::before {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.78) 0 2px, transparent 4px),
+    radial-gradient(circle at 74% 20%, rgba(216, 246, 255, 0.68) 0 2px, transparent 5px),
+    radial-gradient(circle at 64% 76%, rgba(255, 202, 243, 0.64) 0 2px, transparent 5px),
+    conic-gradient(from 130deg at 50% 50%, transparent, color-mix(in srgb, var(--style-accent) 18%, transparent), rgba(255, 202, 243, 0.16), rgba(255, 242, 176, 0.14), transparent);
+  opacity: 0.78;
+  mix-blend-mode: screen;
+}
+
+.rarity-power-foil .figure-image-stage::after,
+.rarity-power-foil-epic .figure-image-stage::after,
+.rarity-power-foil-mythic .figure-image-stage::after,
+.rarity-power-foil-legendary .figure-image-stage::after,
+.rarity-power-foil-founder .figure-image-stage::after {
+  z-index: 3;
+  background:
+    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 47%, transparent 61%),
+    conic-gradient(from 160deg at 50% 50%, transparent, rgba(216, 246, 255, 0.18), rgba(255, 202, 243, 0.18), rgba(255, 242, 176, 0.16), transparent);
+  opacity: 0.58;
+  mix-blend-mode: screen;
+  background-size: 210% 210%;
+  animation: foilGlow 3.4s ease-in-out infinite;
 }
 
 .rarity-power-foil-epic,

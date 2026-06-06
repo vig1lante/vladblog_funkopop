@@ -224,6 +224,13 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".final-rarity-style-grid");
     expect(styles).not.toContain(".rarity-style-card");
     expect(styles).not.toContain(".rarity-style-token");
+    expect(figureCard).toContain("const isFoilRarity");
+    expect(figureCard).toContain("figure-foil-underlay");
+    expect(figureCard).toContain('aria-hidden="true"');
+    expect(styles).toContain(".figure-foil-underlay");
+    expect(styles).toContain(".rarity-power-foil .figure-foil-underlay");
+    expect(styles).toContain("mix-blend-mode: screen");
+    expect(styles).toContain("filter: saturate(2) contrast(1.12) blur(2.5px)");
 
     for (const token of [
       'approvedEpicStyle',

@@ -20,6 +20,7 @@ export function FigureCard({
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(figure.image_url && !imageFailed);
   const rarityStyle = getApprovedRarityStyle(figure.rarity);
+  const isFoilRarity = rarityStyle.power.startsWith("foil");
   const cardStyle = {
     "--style-accent": rarityStyle.accent,
     "--style-accent-2": rarityStyle.accent2,
@@ -33,12 +34,22 @@ export function FigureCard({
     >
       <div className="figure-image-stage">
         {showImage ? (
-          <img
-            className="figure-image"
-            alt="Готовая фигурка"
-            src={figure.image_url ?? ""}
-            onError={() => setImageFailed(true)}
-          />
+          <>
+            {isFoilRarity && (
+              <img
+                aria-hidden="true"
+                className="figure-image figure-foil-underlay"
+                alt=""
+                src={figure.image_url ?? ""}
+              />
+            )}
+            <img
+              className="figure-image"
+              alt="Готовая фигурка"
+              src={figure.image_url ?? ""}
+              onError={() => setImageFailed(true)}
+            />
+          </>
         ) : (
           <div className="figure-image-placeholder">
             <span>
