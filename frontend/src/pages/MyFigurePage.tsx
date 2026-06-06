@@ -15,6 +15,7 @@ import {
   getTelegramProfileUrl,
   getTelegramUsernameLabel,
 } from "../lib/telegramUsername";
+import { requestTelegramDownload } from "../lib/telegramDownload";
 import { type Figure } from "../types/figure";
 
 type MyFigurePageProps = {
@@ -88,14 +89,14 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
         figure.display_number,
         downloadVariant,
       );
-      if (
-        requestTelegramDownload(
-          getPublicFigureCardUrl(figure.id, downloadVariant),
-          fileName,
-        )
-      ) {
+      const telegramDownloadResult = await requestTelegramDownload(
+        getPublicFigureCardUrl(figure.id, downloadVariant),
+        fileName,
+      );
+
+      if (telegramDownloadResult !== "unsupported") {
         setVariantDownloadStatus(downloadVariant, {
-          isComplete: true,
+          isComplete: telegramDownloadResult !== "cancelled",
           isDownloading: false,
         });
         return;
@@ -300,27 +301,4 @@ function triggerDownload(blob: Blob, fileName: string): void {
   link.remove();
 
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function requestTelegramDownload(url: string, fileName: string): boolean {
-  const webApp = window.Telegram?.WebApp;
-  if (!webApp || !url.startsWith("https://")) {
-    return false;
-  }
-
-  try {
-    if (webApp.downloadFile) {
-      webApp.downloadFile({ url, file_name: fileName }, (accepted) => {
-        if (!accepted) {
-          webApp.openLink?.(url, { try_instant_view: false });
-        }
-      });
-      return true;
-    }
-
-    webApp.openLink?.(url, { try_instant_view: false });
-    return Boolean(webApp.openLink);
-  } catch {
-    return false;
-  }
 }

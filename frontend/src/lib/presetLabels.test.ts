@@ -14,4 +14,17 @@ describe("getPresetLabel", () => {
     expect(getPresetLabel("lofi")).toBe("🎧 Лоу-фай");
     expect(getPresetLabel("k_pop")).toBe("🎶 Кей-поп");
   });
+
+  it("uses emoji labels that are safe across Android and iOS Telegram WebViews", () => {
+    expect(getPresetLabel("software_engineer")).toBe("💻 Разработчик");
+    expect(getPresetLabel("poet")).toBe("✍️ Поэт");
+    expect(getPresetLabel("doctor")).toBe("💊 Врач");
+    expect(getPresetLabel("chef")).toBe("🍳 Шеф-повар");
+    expect(getPresetLabel("astronaut")).toBe("🚀 Астронавт");
+    expect(getPresetLabel("meditation")).toBe("🧘 Медитация");
+    expect(getPresetLabel("cosplay")).toBe("🎭 Косплей");
+    expect(getPresetLabel("woodworker")).toBe("🛠️ Столяр");
+    expect(getPresetLabel("plant_parent")).toBe("🌱 Домашний ботаник");
+    expect(getPresetLabel("bitcoin_coin")).toBe("₿ Биткоин-монета");
+  });
 });

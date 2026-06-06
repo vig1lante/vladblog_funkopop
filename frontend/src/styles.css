@@ -29,7 +29,8 @@
   color: var(--text);
   background: var(--bg);
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

@@ -11,7 +11,9 @@ interface Window {
       initData?: string;
       downloadFile?: (
         params: { url: string; file_name: string },
-        callback?: (accepted: boolean) => void,
+        callback?: (
+          result: boolean | { status?: "downloading" | "cancelled" },
+        ) => void,
       ) => void;
       openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
       ready?: () => void;

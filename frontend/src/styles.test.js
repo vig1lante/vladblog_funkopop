@@ -122,9 +122,15 @@ describe("frontend styles", () => {
     }
   });
 
+  it("adds system emoji font fallbacks for mobile Telegram WebViews", () => {
+    expect(styles).toContain('"Apple Color Emoji"');
+    expect(styles).toContain('"Segoe UI Emoji"');
+    expect(styles).toContain('"Noto Color Emoji"');
+  });
+
   it("adds emoji labels for expanded style presets", () => {
     for (const label of [
-      "👨‍💻 Разработчик",
+      "💻 Разработчик",
       "📷 Фотограф",
       "📷 Камера",
       "🧘 Коврик для йоги",
