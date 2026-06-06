@@ -1,125 +1,122 @@
-# Vladik Collectibles
+# VladBlog Collectibles
 
-MVP Telegram Mini App for AI collectible figures for channel subscribers.
+Telegram Mini App для создания персональной AI-фигурки подписчика VladBlog.
 
-Current scope contains the stable technical scaffold plus Telegram WebApp auth,
-figure creation, preset selection, and source photo selection:
+Текущий scope:
 
-- FastAPI backend with settings, CORS, database session setup, Alembic, and health checks.
-- Telegram WebApp initData validation, user upsert, JWT access tokens, and `/me`.
-- Figure creation with unique mint numbers, rarity roll, preset saving, and
-  source photo selection.
-- React + TypeScript + Vite frontend with Telegram auth bootstrap, local preview
-  auth, first figure flow, preset selection, and photo selection.
-- PostgreSQL, backend, and frontend through Docker Compose.
+- FastAPI backend, Alembic, PostgreSQL, CORS, health checks.
+- Telegram WebApp auth, local preview auth, JWT и `/me`.
+- Один collectible slot на пользователя, mint number, rarity и `next_step`.
+- Photo-first flow: Telegram photo sync, upload photo или режим без фото.
+- Presets, ready-to-generate summary, generation waiting и финальная figure page.
+- Mock image generation и optional OpenAI image generation только через backend env.
 
-There is no image generation, daily packs, collection screen, trades, or OpenAI
-integration in this stage.
+Не входят в этот этап: daily packs, trades, collection.
+
+## User Flow
+
+```text
+Auth/Loading
+  -> WelcomePage
+  -> PhotoSetupPage
+  -> PresetsPage
+  -> GenerationReadyPage
+  -> GenerationWaitingPage
+  -> MyFigurePage
+```
+
+`MyFigurePage` показывается только когда `figure.status = completed` и есть
+`figure.image_url`.
 
 ## Local Docker Run
 
-Create local env:
-
 ```bash
 cp .env.example .env
-```
-
-Start everything:
-
-```bash
 docker compose up --build
 ```
 
-Docker Compose starts:
+Сервисы:
 
-- `postgres` on `localhost:5432`
-- `backend` on `localhost:8000`
-- `frontend` on `localhost:5173`
+- backend: [http://localhost:8000](http://localhost:8000)
+- frontend: [http://localhost:5173](http://localhost:5173)
+- postgres: `localhost:5432`
 
-The backend container waits for PostgreSQL and applies Alembic migrations before
-starting FastAPI.
+Outside Telegram используй local preview button.
 
-## Verify
+## Dev Database Reset
 
-Backend:
-
-- [http://localhost:8000/health](http://localhost:8000/health)
-- [http://localhost:8000/health/db](http://localhost:8000/health/db)
-- `POST /auth/telegram`
-- `GET /me` with `Authorization: Bearer <token>`
-- `GET /figures/me` with `Authorization: Bearer <token>`
-- `POST /figures/me` with `Authorization: Bearer <token>`
-- `PATCH /figures/me/presets` with `Authorization: Bearer <token>`
-- `POST /uploads/figure-photo` multipart upload with `Authorization: Bearer <token>`
-- `/media/...` local media files
-
-Frontend:
-
-- [http://localhost:5173](http://localhost:5173)
-
-Outside Telegram, use the local preview button. It calls the local-only
-`POST /auth/dev` endpoint, then lets you create a figure, open preset selection,
-save style, and return to the figure page.
-
-Inside Telegram, the frontend sends raw `window.Telegram.WebApp.initData` to the
-backend. If the user has no figure, it shows the create screen. After creating,
-it shows the figure card with display number, rarity, status, and image
-placeholder. The active "Продолжить настройку" button opens preset selection,
-and "Выбрать фото" opens source photo selection. After saving all presets, the
-figure status becomes `ready_for_generation`.
-
-## Cloudflare Tunnel Dev Flow
-
-Telegram needs a public HTTPS frontend URL. When testing through Telegram, use
-two tunnels: one for backend and one for frontend.
-
-Start the app:
-
-```bash
-docker compose up --build
-```
-
-In another terminal, start the backend tunnel:
-
-```bash
-cloudflared tunnel --url http://localhost:8000
-```
-
-Copy the backend tunnel URL into `.env`:
+Default:
 
 ```env
-VITE_API_BASE_URL=https://YOUR_BACKEND_TUNNEL.trycloudflare.com
-PUBLIC_MEDIA_BASE_URL=https://YOUR_BACKEND_TUNNEL.trycloudflare.com/media
+RESET_DATABASE_ON_START=false
 ```
 
-In another terminal, start the frontend tunnel:
-
-```bash
-cloudflared tunnel --url http://localhost:5173
-```
-
-Copy the frontend tunnel URL into `.env`:
+Опасная dev-only настройка:
 
 ```env
-BACKEND_CORS_ORIGINS=http://localhost:5173,https://YOUR_FRONTEND_TUNNEL.trycloudflare.com
+RESET_DATABASE_ON_START=true
+```
+
+При `APP_ENV != production` backend после migrations очищает `generation_jobs`,
+`figures`, `users` через `TRUNCATE ... RESTART IDENTITY CASCADE` и сбрасывает
+`figure_mint_number_seq`, поэтому первый новый пользователь снова получает
+`#0001`. В `APP_ENV=production` переменная игнорируется.
+
+## Generation
+
+Mock mode работает без ключа и не вызывает OpenAI API:
+
+```env
+GENERATION_ENABLED=true
+GENERATION_MODE=mock
+```
+
+OpenAI mode:
+
+```env
+GENERATION_ENABLED=true
+GENERATION_MODE=openai
+OPENAI_API_KEY=your_key
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_SIZE=1024x1024
+OPENAI_IMAGE_QUALITY=medium
+```
+
+Жёсткий kill switch:
+
+```env
+GENERATION_ENABLED=false
+```
+
+При `GENERATION_ENABLED=false` backend отклоняет `/figures/me/generate`
+до создания job и не запускает mock/OpenAI генерацию. `GENERATION_MODE=false`
+тоже трактуется как выключенная генерация для защиты от старой конфигурации.
+
+Ключ хранится только в backend env.
+
+## Cloudflare Tunnel Reminder
+
+Для Telegram нужны публичные HTTPS URLs:
+
+```env
 PUBLIC_FRONTEND_URL=https://YOUR_FRONTEND_TUNNEL.trycloudflare.com
 PUBLIC_BACKEND_URL=https://YOUR_BACKEND_TUNNEL.trycloudflare.com
 ```
 
-Restart Compose so Vite and FastAPI reread env:
+Меняй только эти две строки в корневом `.env`. Frontend, backend CORS,
+media URL и bot `/start` подтянутся из них.
+
+BotFather Mini App URL получает `PUBLIC_FRONTEND_URL`. Docker service `bot`
+также ставит меню бота и отвечает на `/start` кнопкой Mini App.
+
+## Verify
 
 ```bash
-docker compose down
 docker compose up --build
 ```
 
-In BotFather, set the Mini App URL to the frontend tunnel URL:
+Проверить:
 
-```text
-https://YOUR_FRONTEND_TUNNEL.trycloudflare.com
-```
-
-Important: BotFather gets the frontend tunnel URL, while the frontend calls the
-backend tunnel URL through `VITE_API_BASE_URL`. Do not leave
-`VITE_API_BASE_URL=http://localhost:8000` when opening the Mini App inside
-Telegram.
+- [http://localhost:8000/health](http://localhost:8000/health)
+- [http://localhost:5173](http://localhost:5173)
+- Preview auth -> Welcome -> Photo -> Presets -> Ready -> Waiting -> Result.

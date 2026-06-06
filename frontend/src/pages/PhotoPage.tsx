@@ -1,74 +1,172 @@
-import { useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
 import { type UserResponse } from "../api/auth";
 import { updateMyFigurePresets } from "../api/figures";
+import {
+  getTelegramPhotoDebug,
+  syncTelegramPhoto,
+  type TelegramPhotoDebugResponse,
+} from "../api/me";
 import { uploadFigurePhoto } from "../api/uploads";
+import { Button } from "../components/ui/Button";
+import { ErrorMessage } from "../components/ui/ErrorMessage";
+import { GlassPanel } from "../components/ui/GlassPanel";
+import { PageShell } from "../components/ui/PageShell";
+import { Spinner } from "../components/ui/Spinner";
+import { StepIndicator } from "../components/ui/StepIndicator";
+import {
+  getPhotoTooLargeMessage,
+  isPhotoTooLargeForQuickUpload,
+} from "../lib/uploadLimits";
 import { type Figure } from "../types/figure";
 
 type PhotoPageProps = {
   figure: Figure;
   user: UserResponse;
-  onBack: () => void;
+  onUserUpdated: (user: UserResponse) => void;
+  onFigureUpdated: (figure: Figure) => void;
   onSaved: (figure: Figure) => void;
 };
 
-export function PhotoPage({ figure, user, onBack, onSaved }: PhotoPageProps) {
-  const [file, setFile] = useState<File | null>(null);
+export function PhotoPage({
+  figure,
+  user,
+  onUserUpdated,
+  onFigureUpdated,
+  onSaved,
+}: PhotoPageProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<"ready" | "saving">("ready");
+  const [status, setStatus] = useState<
+    "ready" | "saving" | "uploading" | "syncing"
+  >("ready");
+  const [activeAction, setActiveAction] = useState<
+    "continue" | "upload" | "none" | null
+  >(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [photoSyncAttempted, setPhotoSyncAttempted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<TelegramPhotoDebugResponse | null>(
+    null,
+  );
+  const syncAttemptedRef = useRef(false);
+  const fileInputId = useId();
+  const [fileInputVersion, setFileInputVersion] = useState(0);
+  const oversizedPhotoMessage = getPhotoTooLargeMessage();
+  const isLocalPreviewUser =
+    user.telegram_id === 100000001 || user.username === "local_preview";
+  const currentPhotoUrl = previewUrl || figure.source_photo_url || user.photo_url;
+  const currentPhotoType =
+    figure.source_photo_type === "uploaded" && figure.source_photo_url
+      ? "uploaded"
+      : user.photo_url
+      ? "telegram_profile"
+      : null;
 
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
+    if (user.photo_url || syncAttemptedRef.current) {
+      return;
+    }
+    if (isLocalPreviewUser) {
+      syncAttemptedRef.current = true;
+      setPhotoSyncAttempted(true);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    let isActive = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 9000);
+    syncAttemptedRef.current = true;
+    setStatus("syncing");
+    syncTelegramPhoto(controller.signal)
+      .then((updatedUser) => {
+        if (isActive) {
+          setPhotoSyncAttempted(true);
+          setStatus("ready");
+          onUserUpdated(updatedUser);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setPhotoSyncAttempted(true);
+          setStatus("ready");
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+      });
 
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
+    return () => {
+      isActive = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [isLocalPreviewUser, onUserUpdated, user.photo_url]);
 
-  async function selectTelegramPhoto() {
+  async function continueWithCurrentPhoto() {
+    if (status !== "ready") {
+      return;
+    }
+    if (!currentPhotoType) {
+      setErrorMessage("Сначала загрузи фото или выбери вариант без фото.");
+      return;
+    }
+
+    setActiveAction("continue");
     setStatus("saving");
     setErrorMessage(null);
 
     try {
       const updatedFigure = await updateMyFigurePresets({
-        source_photo_type: "telegram_profile",
+        source_photo_type: currentPhotoType,
       });
       onSaved(updatedFigure);
     } catch (error) {
       setStatus("ready");
+      setActiveAction(null);
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Не удалось выбрать фото Telegram",
+        error instanceof Error ? error.message : "Не удалось сохранить фото",
       );
     }
   }
 
-  async function uploadSelectedPhoto() {
-    if (!file) {
+  async function uploadSelectedPhoto(file: File) {
+    if (status !== "ready") {
+      return;
+    }
+    if (isPhotoTooLargeForQuickUpload(file)) {
+      setActiveAction(null);
+      setStatus("ready");
+      setErrorMessage(oversizedPhotoMessage);
       return;
     }
 
-    setStatus("saving");
+    setActiveAction("upload");
+    setStatus("uploading");
     setErrorMessage(null);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
 
     try {
       const updatedFigure = await uploadFigurePhoto(file);
-      onSaved(updatedFigure);
+      setPreviewUrl(updatedFigure.source_photo_url);
+      onFigureUpdated(updatedFigure);
+      setStatus("ready");
+      setActiveAction(null);
+      URL.revokeObjectURL(objectUrl);
     } catch (error) {
       setStatus("ready");
+      setActiveAction(null);
       setErrorMessage(
         error instanceof Error ? error.message : "Не удалось загрузить фото",
       );
+      URL.revokeObjectURL(objectUrl);
     }
   }
 
   async function selectNoPhoto() {
+    if (status !== "ready") {
+      return;
+    }
+    setActiveAction("none");
     setStatus("saving");
     setErrorMessage(null);
 
@@ -79,89 +177,135 @@ export function PhotoPage({ figure, user, onBack, onSaved }: PhotoPageProps) {
       onSaved(updatedFigure);
     } catch (error) {
       setStatus("ready");
+      setActiveAction(null);
       setErrorMessage(
         error instanceof Error ? error.message : "Не удалось выбрать режим без фото",
       );
     }
   }
 
+  function refreshFileInput() {
+    if (status === "ready") {
+      setFileInputVersion((version) => version + 1);
+    }
+  }
+
+  function openFileInputFromKeyboard(event: KeyboardEvent<HTMLLabelElement>) {
+    if (status !== "ready" || !["Enter", " "].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    refreshFileInput();
+    window.setTimeout(() => document.getElementById(fileInputId)?.click(), 0);
+  }
+
+  async function loadTelegramDebug() {
+    try {
+      setDebugInfo(await getTelegramPhotoDebug());
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Не удалось проверить Telegram",
+      );
+    }
+  }
+
   return (
-    <main className="page-shell game-shell">
-      <section className="game-panel photo-panel">
-        <p className="brand-line">VLADIK COLLECTIBLES</p>
-        <h1>Выбери фото для фигурки</h1>
-        <p className="helper-text">Фигурка {figure.display_number}</p>
-        {errorMessage && <p className="error-text">{errorMessage}</p>}
+    <PageShell>
+      <GlassPanel className="game-panel photo-panel">
+        <StepIndicator current={2} total={5} />
+        <p className="brand-line">VLADBLOG COLLECTIBLES</p>
+        <h1>Твоё фото</h1>
+        <p className="lead">
+          Если хочешь, можешь заменить его на свое лучшее из галереи. Но крайне
+          желательно, чтобы фото было с одним человеком. Тобой;)
+        </p>
+        {errorMessage && (
+          <ErrorMessage message={errorMessage} />
+        )}
 
-        <div className="photo-options">
-          <section className="photo-option">
-            <div className="photo-preview">
-              {user.photo_url ? (
-                <img alt="Telegram profile" src={user.photo_url} />
-              ) : (
-                <span>Telegram не дал фото профиля</span>
-              )}
-            </div>
-            <h2>Использовать фото Telegram</h2>
-            <button
-              className="secondary-button"
-              disabled={!user.photo_url || status === "saving"}
-              type="button"
-              onClick={selectTelegramPhoto}
+        <div className="photo-first-layout">
+          <div className="photo-preview main-photo-preview">
+            {currentPhotoUrl ? (
+              <img alt="Фото для фигурки" src={currentPhotoUrl} />
+            ) : (
+              <span>VB</span>
+            )}
+          </div>
+          {!currentPhotoUrl && photoSyncAttempted && (
+            <p className="helper-text">
+              {isLocalPreviewUser
+                ? "В preview-режиме фото Telegram недоступно. Открой Mini App внутри Telegram или загрузи фото вручную."
+                : "Не удалось получить фото из Telegram. Загрузи своё фото или создай фигурку без фото."}
+            </p>
+          )}
+          {status === "syncing" && (
+            <p className="helper-text inline-loader">
+              <Spinner /> Проверяем фото Telegram...
+            </p>
+          )}
+          <input
+            key={fileInputVersion}
+            accept="image/jpeg,image/png,image/webp"
+            disabled={status !== "ready"}
+            id={fileInputId}
+            type="file"
+            onChange={(event) => {
+              const selectedFile = event.target.files?.[0];
+              if (selectedFile) {
+                uploadSelectedPhoto(selectedFile);
+              }
+              event.target.value = "";
+            }}
+          />
+          <div className="actions-row">
+            <Button
+              disabled={!currentPhotoUrl || status !== "ready"}
+              isLoading={activeAction === "continue"}
+              loadingText="Сохраняем..."
+              onClick={continueWithCurrentPhoto}
             >
-              Выбрать Telegram photo
-            </button>
-          </section>
-
-          <section className="photo-option">
-            <div className="photo-preview">
-              {previewUrl ? (
-                <img alt="Выбранное фото" src={previewUrl} />
-              ) : (
-                <span>JPEG, PNG или WebP от 256×256</span>
-              )}
-            </div>
-            <h2>Загрузить своё фото</h2>
-            <input
-              accept="image/jpeg,image/png,image/webp"
-              type="file"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-            <button
-              className="primary-button"
-              disabled={!file || status === "saving"}
-              type="button"
-              onClick={uploadSelectedPhoto}
+              Продолжить с этим фото
+            </Button>
+            <label
+              aria-disabled={status !== "ready"}
+              className={`ui-button ui-button-secondary file-upload-control ${
+                status !== "ready" ? "is-disabled" : ""
+              }`.trim()}
+              htmlFor={status === "ready" ? fileInputId : undefined}
+              role="button"
+              tabIndex={status === "ready" ? 0 : -1}
+              onKeyDown={openFileInputFromKeyboard}
+              onPointerDown={refreshFileInput}
             >
-              {status === "saving" ? "Сохраняем..." : "Загрузить фото"}
-            </button>
-          </section>
-
-          <section className="photo-option">
-            <div className="photo-preview no-photo-preview">
-              <span>Без исходного фото</span>
-            </div>
-            <h2>Создать без фото</h2>
-            <button
-              className="secondary-button"
-              disabled={status === "saving"}
-              type="button"
+              {activeAction === "upload" && <Spinner />}
+              <span>
+                {activeAction === "upload" ? "Загружаем..." : "Загрузить другое фото"}
+              </span>
+            </label>
+            <Button
+              disabled={status !== "ready"}
+              isLoading={activeAction === "none"}
+              loadingText="Сохраняем..."
+              variant="secondary"
               onClick={selectNoPhoto}
             >
               Создать без фото
-            </button>
-          </section>
+            </Button>
+          </div>
+          {import.meta.env.DEV && (
+            <details className="prompt-details">
+              <summary>Технические детали фото</summary>
+              <Button variant="secondary" onClick={loadTelegramDebug}>
+                Проверить Telegram API
+              </Button>
+              {debugInfo && (
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              )}
+            </details>
+          )}
         </div>
-
-        <button
-          className="secondary-button"
-          disabled={status === "saving"}
-          type="button"
-          onClick={onBack}
-        >
-          Назад
-        </button>
-      </section>
-    </main>
+      </GlassPanel>
+    </PageShell>
   );
 }

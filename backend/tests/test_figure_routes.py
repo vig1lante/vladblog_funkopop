@@ -1,6 +1,7 @@
 import struct
 import zlib
 from collections.abc import AsyncGenerator
+from io import BytesIO
 from uuid import UUID
 
 import pytest
@@ -14,7 +15,14 @@ from app.core.database import Base, get_async_session
 from app.main import app
 from app.models.figure import Figure
 from app.models.generation_job import GenerationJob
+from app.models.user import utc_now
+from app.services import generation as generation_service
 from tests.helpers import build_telegram_init_data
+
+
+@pytest.fixture(autouse=True)
+def _run_generation_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "GENERATION_BACKGROUND_TASKS", False)
 
 
 @pytest.fixture()
@@ -129,13 +137,35 @@ async def count_generation_jobs(
         return len(result.scalars().all())
 
 
+async def make_active_generation_job(
+    session_maker: async_sessionmaker[AsyncSession],
+    figure_id: str,
+    user_id: str,
+) -> str:
+    async with session_maker() as session:
+        figure = await session.get(Figure, UUID(figure_id))
+        assert figure is not None
+        figure.status = "generating"
+        job = GenerationJob(
+            figure_id=UUID(figure_id),
+            user_id=UUID(user_id),
+            status="generating",
+            model="mock",
+            attempt=1,
+            max_attempts=2,
+            started_at=utc_now(),
+        )
+        session.add_all([figure, job])
+        await session.commit()
+        return str(job.id)
+
+
 def make_ready_figure(client: TestClient, headers: dict[str, str]) -> None:
     client.post("/figures/me", headers=headers)
     response = client.patch(
         "/figures/me/presets",
         headers=headers,
         json={
-            "selected_color": "purple",
             "selected_vibe": "cyberpunk",
             "selected_accessory": "laptop",
             "selected_background": "neon_server_room",
@@ -154,7 +184,7 @@ def test_get_my_figure_without_figure_returns_404(client: TestClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_post_figures_me_creates_founder_figure_for_current_user(
+async def test_post_figures_me_creates_legendary_figure_for_current_user(
     client: TestClient,
     session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -166,7 +196,7 @@ async def test_post_figures_me_creates_founder_figure_for_current_user(
     payload = response.json()
     assert payload["mint_number"] == 1
     assert payload["display_number"] == "#0001"
-    assert payload["rarity"] == "Founder Legendary"
+    assert payload["rarity"] == "Legendary"
     assert payload["status"] == "draft"
     assert payload["image_url"] is None
     assert await count_figures(session_maker) == 1
@@ -197,6 +227,7 @@ def test_get_my_figure_returns_existing_figure(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json()["id"] == created["id"]
+    assert response.json()["next_step"] == "photo"
 
 
 @pytest.mark.asyncio
@@ -230,6 +261,16 @@ def test_get_figure_presets_returns_available_options(client: TestClient) -> Non
     assert response.status_code == 200
     payload = response.json()
     assert payload["colors"][0] == {"value": "red", "label": "Красный"}
+    assert [option["value"] for option in payload["rarities"]] == [
+        "Epic",
+        "Mythic",
+        "Legendary",
+        "Founder Legendary",
+        "Foil Epic",
+        "Foil Mythic",
+        "Foil Legendary",
+        "Foil Founder Legendary",
+    ]
     assert payload["source_photo_types"][0]["value"] == "telegram_profile"
     assert [option["value"] for option in payload["source_photo_types"]] == [
         "telegram_profile",
@@ -285,10 +326,10 @@ def test_patch_presets_updates_figure_and_marks_ready(client: TestClient) -> Non
         "/figures/me/presets",
         headers=headers,
         json={
-            "selected_color": "purple",
             "selected_vibe": "cyberpunk",
             "selected_accessory": "laptop",
             "selected_background": "neon_server_room",
+            "rarity": "Mythic",
             "source_photo_type": "telegram_profile",
             "is_public": False,
         },
@@ -296,14 +337,32 @@ def test_patch_presets_updates_figure_and_marks_ready(client: TestClient) -> Non
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["selected_color"] == "purple"
+    assert payload["selected_color"] is None
     assert payload["selected_vibe"] == "cyberpunk"
     assert payload["selected_accessory"] == "laptop"
     assert payload["selected_background"] == "neon_server_room"
+    assert payload["rarity"] == "Mythic"
     assert payload["source_photo_type"] == "telegram_profile"
     assert payload["source_photo_url"] == telegram_photo_url
     assert payload["is_public"] is False
     assert payload["status"] == "ready_for_generation"
+    assert payload["next_step"] == "ready_to_generate"
+
+
+def test_photo_choice_routes_to_presets_before_generation(client: TestClient) -> None:
+    headers = auth_headers(client, photo_url="https://cdn.telegram.example/avatar.jpg")
+    client.post("/figures/me", headers=headers)
+
+    response = client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={"source_photo_type": "telegram_profile"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_photo_type"] == "telegram_profile"
+    assert payload["next_step"] == "presets"
 
 
 def test_patch_presets_rejects_telegram_photo_when_user_has_no_photo(
@@ -326,7 +385,12 @@ def test_patch_presets_rejects_telegram_photo_when_user_has_no_photo(
     )
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "Telegram profile photo is not available"}
+    assert response.json() == {
+        "detail": (
+            "Не удалось получить фото из Telegram. Загрузи своё фото или "
+            "создай фигурку без фото."
+        )
+    }
 
 
 def test_patch_presets_can_select_no_photo(client: TestClient) -> None:
@@ -403,7 +467,7 @@ def test_upload_figure_photo_rejects_invalid_mime(
     )
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "Unsupported image type"}
+    assert response.json() == {"detail": "Не удалось загрузить фото"}
 
 
 def test_upload_figure_photo_rejects_small_image(
@@ -422,7 +486,7 @@ def test_upload_figure_photo_rejects_small_image(
     )
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "Image must be at least 256x256"}
+    assert response.json() == {"detail": "Фото слишком маленькое"}
 
 
 def test_generate_figure_requires_auth(client: TestClient) -> None:
@@ -470,6 +534,30 @@ def test_generate_figure_rejects_uploaded_without_photo(client: TestClient) -> N
 
 
 @pytest.mark.asyncio
+async def test_generate_figure_returns_existing_active_job(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+    figure = client.get("/figures/me", headers=headers).json()
+    job_id = await make_active_generation_job(
+        session_maker,
+        figure["id"],
+        figure["user_id"],
+    )
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["id"] == job_id
+    assert payload["job"]["status"] == "generating"
+    assert payload["figure"]["status"] == "generating"
+    assert await count_generation_jobs(session_maker) == 1
+
+
+@pytest.mark.asyncio
 async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     client: TestClient,
     session_maker: async_sessionmaker[AsyncSession],
@@ -487,16 +575,392 @@ async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     assert response.status_code == 200
     payload = response.json()
     assert payload["job"]["status"] == "completed"
+    assert payload["job"]["model"] == "mock"
     assert payload["job"]["prompt"].startswith("Create an image in Funko Pop style")
-    assert "VLADIK COLLECTIBLES" in payload["job"]["prompt"]
+    assert "VLADBLOG COLLECTIBLES" in payload["job"]["prompt"]
     assert payload["job"]["result_image_url"].endswith(
         "/media/mock/generated-figure.png"
     )
     assert payload["figure"]["status"] == "completed"
+    assert payload["figure"]["next_step"] == "completed"
     assert payload["figure"]["image_url"] == payload["job"]["result_image_url"]
     assert payload["figure"]["prompt"] == payload["job"]["prompt"]
     assert (tmp_path / "mock" / "generated-figure.png").exists()
     assert await count_generation_jobs(session_maker) == 1
+
+    refreshed = client.get("/figures/me", headers=headers)
+    assert refreshed.status_code == 200
+    assert refreshed.json()["image_url"] == payload["job"]["result_image_url"]
+
+
+def test_generate_figure_mock_mode_is_case_insensitive_and_never_uses_openai(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", " Mock ")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(
+        generation_service,
+        "get_openai_client",
+        lambda: pytest.fail("OpenAI client must not be created in mock mode"),
+    )
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["status"] == "completed"
+    assert payload["job"]["model"] == "mock"
+
+
+@pytest.mark.asyncio
+async def test_generate_figure_rejects_when_generation_disabled(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", "mock")
+    monkeypatch.setattr(settings, "GENERATION_ENABLED", False, raising=False)
+    monkeypatch.setattr(
+        generation_service,
+        "run_mock_generation",
+        lambda *args: pytest.fail("generation must not run when disabled"),
+    )
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Figure generation is disabled"}
+    assert await count_generation_jobs(session_maker) == 0
+    assert not (tmp_path / "mock" / "generated-figure.png").exists()
+
+
+def test_download_my_figure_card_returns_final_png(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", "mock")
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    generated = client.post("/figures/me/generate", headers=headers)
+    assert generated.status_code == 200
+    generated_payload = generated.json()
+
+    response = client.get("/figures/me/card.png", headers=headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="vladblog-collectible-0001.png"'
+    )
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert len(response.content) > 1000
+
+    public_response = client.get(
+        f"/figures/{generated_payload['figure']['id']}/card.png"
+    )
+    assert public_response.status_code == 200
+    assert public_response.headers["content-type"] == "image/png"
+    assert public_response.headers["access-control-allow-origin"] == (
+        "https://web.telegram.org"
+    )
+    assert public_response.content.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_download_my_figure_card_requires_completed_image(
+    client: TestClient,
+) -> None:
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.get("/figures/me/card.png", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Figure image is not ready"}
+
+
+def test_generate_figure_openai_requires_api_key(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "OPENAI_API_KEY is required for openai mode"
+
+
+def test_updating_generation_presets_clears_previous_image(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", "mock")
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+    generated = client.post("/figures/me/generate", headers=headers).json()["figure"]
+    assert generated["image_url"]
+
+    response = client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={"selected_vibe": "magic"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready_for_generation"
+    assert payload["selected_vibe"] == "magic"
+    assert payload["image_url"] is None
+    assert payload["prompt"] is None
+
+
+@pytest.mark.asyncio
+async def test_generate_figure_openai_saves_result_and_prompt(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeImage:
+        b64_json = "iVBORw0KGgo="
+
+    class FakeResponse:
+        data = [FakeImage()]
+
+    class FakeImages:
+        def generate(self, **kwargs: object) -> FakeResponse:
+            assert kwargs["model"] == "gpt-image-2"
+            assert kwargs["size"] == "1024x1024"
+            assert kwargs["quality"] == "medium"
+            assert "Funko Pop style" in str(kwargs["prompt"])
+            return FakeResponse()
+
+    class FakeClient:
+        images = FakeImages()
+
+    monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "OPENAI_IMAGE_MODEL", "gpt-image-2")
+    monkeypatch.setattr(settings, "OPENAI_IMAGE_SIZE", "1024x1024")
+    monkeypatch.setattr(settings, "OPENAI_IMAGE_QUALITY", "medium")
+    monkeypatch.setattr(settings, "OPENAI_IMAGE_MAX_ATTEMPTS", 2)
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(generation_service, "get_openai_client", lambda: FakeClient())
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["status"] == "completed"
+    assert payload["job"]["model"] == "gpt-image-2"
+    assert payload["job"]["prompt"].startswith("Create an image in Funko Pop style")
+    assert "metallic gold" in payload["job"]["prompt"]
+    assert "Character name from Telegram: Vlad" in payload["job"]["prompt"]
+    assert "octagon" not in payload["job"]["prompt"].lower()
+    assert "standalone digit" not in payload["job"]["prompt"].lower()
+    assert payload["job"]["max_attempts"] == 2
+    assert payload["job"]["result_image_url"].startswith(
+        "http://testserver/media/generated-figures/"
+    )
+    assert payload["figure"]["status"] == "completed"
+    assert payload["figure"]["image_url"] == payload["job"]["result_image_url"]
+    assert payload["figure"]["prompt"] == payload["job"]["prompt"]
+    assert list((tmp_path / "generated-figures").glob("*.png"))
+    assert await count_generation_jobs(session_maker) == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_figure_openai_offloads_blocking_image_call(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    class FakeClient:
+        pass
+
+    async def fake_to_thread(func: object, *args: object) -> bytes:
+        calls.append((func, args))
+        return b"\x89PNG\r\n\x1a\n"
+
+    monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(generation_service, "get_openai_client", lambda: FakeClient())
+    monkeypatch.setattr(generation_service.asyncio, "to_thread", fake_to_thread)
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["job"]["status"] == "completed"
+    assert calls
+    assert calls[0][0] is generation_service._generate_openai_image
+
+
+def test_generate_figure_openai_uses_uploaded_photo_reference(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeImage:
+        b64_json = "iVBORw0KGgo="
+
+    class FakeResponse:
+        data = [FakeImage()]
+
+    class FakeImages:
+        def edit(self, **kwargs: object) -> FakeResponse:
+            image_file = kwargs["image"]
+            assert image_file.read(8) == b"\x89PNG\r\n\x1a\n"
+            assert "provided user photo" in str(kwargs["prompt"])
+            return FakeResponse()
+
+        def generate(self, **kwargs: object) -> FakeResponse:
+            raise AssertionError("uploaded photo must use images.edit")
+
+    class FakeClient:
+        images = FakeImages()
+
+    monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(generation_service, "get_openai_client", lambda: FakeClient())
+    headers = auth_headers(client)
+    client.post("/figures/me", headers=headers)
+    client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={
+            "selected_color": "purple",
+            "selected_vibe": "cyberpunk",
+            "selected_accessory": "laptop",
+            "selected_background": "neon_server_room",
+            "source_photo_type": "none",
+        },
+    )
+    client.post(
+        "/uploads/figure-photo",
+        headers=headers,
+        files={"file": ("figure.png", png_bytes(300, 300), "image/png")},
+    )
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["job"]["status"] == "completed"
+
+
+def test_generate_figure_openai_normalizes_telegram_svg_reference(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeImage:
+        b64_json = "iVBORw0KGgo="
+
+    class FakeResponse:
+        data = [FakeImage()]
+
+    class FakeImages:
+        def edit(self, **kwargs: object) -> FakeResponse:
+            image_file = kwargs["image"]
+            assert image_file.read(8) == b"\x89PNG\r\n\x1a\n"
+            return FakeResponse()
+
+    class FakeClient:
+        images = FakeImages()
+
+    monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(generation_service, "get_openai_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        generation_service,
+        "download_telegram_profile_photo",
+        lambda telegram_id: png_bytes(300, 300),
+    )
+    headers = auth_headers(
+        client,
+        photo_url="https://t.me/i/userpic/320/example.svg",
+    )
+    client.post("/figures/me", headers=headers)
+    client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={
+            "selected_color": "purple",
+            "selected_vibe": "cyberpunk",
+            "selected_accessory": "laptop",
+            "selected_background": "neon_server_room",
+            "source_photo_type": "telegram_profile",
+        },
+    )
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["job"]["status"] == "completed"
+    assert payload["figure"]["source_photo_url"].startswith(
+        "http://testserver/media/telegram-photos/"
+    )
+
+
+def test_openai_reference_image_download_uses_supported_file_object(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b"\x89PNG\r\n\x1a\n"
+
+    monkeypatch.setattr(
+        generation_service,
+        "urlopen",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+
+    with generation_service._open_reference_image(
+        "https://example.com/avatar.png",
+    ) as image_file:
+        assert isinstance(image_file, BytesIO)
+        assert image_file.name == "reference.png"
+        assert image_file.read(8) == b"\x89PNG\r\n\x1a\n"
 
 
 def test_get_generation_job_requires_owner(client: TestClient) -> None:
@@ -518,3 +982,45 @@ def test_get_generation_job_requires_owner(client: TestClient) -> None:
     assert same_user_response.status_code == 200
     assert same_user_response.json()["id"] == job_id
     assert second_user_response.status_code == 404
+
+
+def test_sync_telegram_photo_requires_auth(client: TestClient) -> None:
+    response = client.post("/me/sync-telegram-photo")
+
+    assert response.status_code == 401
+
+
+def test_sync_telegram_photo_updates_user_and_selected_figure(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    headers = auth_headers(client, photo_url="https://old.example/avatar.jpg")
+    client.post("/figures/me", headers=headers)
+    client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={
+            "selected_color": "purple",
+            "selected_vibe": "cyberpunk",
+            "selected_accessory": "laptop",
+            "selected_background": "neon_server_room",
+            "source_photo_type": "telegram_profile",
+        },
+    )
+
+    monkeypatch.setattr(
+        "app.api.routes.me.download_telegram_profile_photo",
+        lambda telegram_id: png_bytes(300, 300),
+    )
+
+    response = client.post("/me/sync-telegram-photo", headers=headers)
+
+    assert response.status_code == 200
+    user = response.json()
+    assert user["photo_url"].startswith("http://testserver/media/telegram-photos/")
+    figure = client.get("/figures/me", headers=headers).json()
+    assert figure["source_photo_url"] == user["photo_url"]
+    assert list((tmp_path / "telegram-photos").glob("*.jpg"))

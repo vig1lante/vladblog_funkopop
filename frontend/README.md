@@ -1,4 +1,4 @@
-# Vladik Collectibles Frontend
+# VladBlog Collectibles Frontend
 
 React + TypeScript + Vite frontend for the Telegram Mini App MVP.
 
@@ -6,21 +6,20 @@ React + TypeScript + Vite frontend for the Telegram Mini App MVP.
 
 ```bash
 npm install
-cp .env.example .env
 npm run dev
 ```
 
-The frontend reads the backend URL from `VITE_API_BASE_URL`.
+The frontend reads `PUBLIC_BACKEND_URL` from the root `../.env`.
 
-## Telegram Auth
+## Flow
 
-Inside Telegram, the app sends raw `window.Telegram.WebApp.initData` to
-`POST /auth/telegram`, stores the returned access token in `localStorage`, and
-uses it for authenticated API calls.
+Auth renders the current step from backend `figure.next_step`:
 
-If auth returns no figure, the app shows `CreateFigurePage`. Clicking
-`Создать мою фигурку` calls `POST /figures/me` and then shows `MyFigurePage`
-with the display number, rarity, draft status, and image placeholder.
+```text
+Welcome -> Photo -> Presets -> Ready -> Waiting -> Result
+```
 
-In a normal browser, Telegram initData is absent, so the app shows a dev fallback
-message instead of crashing.
+`MyFigurePage` renders only after `completed + image_url`.
+
+Photo step syncs Telegram profile photo once, supports custom upload through a
+hidden native file input, and allows creating without a photo.

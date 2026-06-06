@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from app.enums.presets import (
     FigureAccessory,
@@ -9,6 +9,12 @@ from app.enums.presets import (
     FigureColor,
     FigureVibe,
     SourcePhotoType,
+)
+from app.enums.rarity import Rarity
+
+FRIENDLY_TELEGRAM_PHOTO_ERROR = (
+    "Не удалось получить фото из Telegram. Загрузи своё фото или создай "
+    "фигурку без фото."
 )
 
 
@@ -22,6 +28,7 @@ class FigurePresetsResponse(BaseModel):
     vibes: list[PresetOption]
     accessories: list[PresetOption]
     backgrounds: list[PresetOption]
+    rarities: list[PresetOption]
     source_photo_types: list[PresetOption]
 
 
@@ -30,6 +37,7 @@ class FigurePresetsUpdateRequest(BaseModel):
     selected_vibe: FigureVibe | None = None
     selected_accessory: FigureAccessory | None = None
     selected_background: FigureBackground | None = None
+    rarity: Rarity | None = None
     source_photo_type: SourcePhotoType | None = None
     is_public: bool | None = None
 
@@ -58,6 +66,32 @@ class FigureResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def next_step(self) -> str:
+        if self.status == "completed" and self.image_url:
+            return "completed"
+        if self.status == "failed":
+            return "failed"
+        if self.status == "generating":
+            return "generating"
+        if not self.source_photo_type:
+            return "photo"
+        if self.source_photo_type in {"telegram_profile", "uploaded"}:
+            if not self.source_photo_url:
+                return "photo"
+        if not all(
+            [
+                self.selected_vibe,
+                self.selected_accessory,
+                self.selected_background,
+            ]
+        ):
+            return "presets"
+        if self.status == "ready_for_generation":
+            return "ready_to_generate"
+        return "presets"
 
 
 class GenerationJobResponse(BaseModel):

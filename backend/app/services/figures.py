@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,8 @@ from app.models.user import User
 from app.repositories.figures import FiguresRepository
 from app.schemas.figure import FigurePresetsUpdateRequest
 from app.services.rarity import roll_rarity
+
+logger = logging.getLogger(__name__)
 
 
 def format_display_number(mint_number: int) -> str:
@@ -21,12 +25,23 @@ class TelegramProfilePhotoUnavailableError(ValueError):
 def has_generation_presets(figure: Figure) -> bool:
     return all(
         [
-            figure.selected_color,
             figure.selected_vibe,
             figure.selected_accessory,
             figure.selected_background,
             figure.source_photo_type,
         ]
+    )
+
+
+def get_generation_input_signature(figure: Figure) -> tuple[str | None, ...]:
+    return (
+        figure.selected_color,
+        figure.selected_vibe,
+        figure.selected_accessory,
+        figure.selected_background,
+        figure.rarity,
+        figure.source_photo_type,
+        figure.source_photo_url,
     )
 
 
@@ -40,6 +55,12 @@ class FigureService:
     async def create_my_figure(self, session: AsyncSession, user: User) -> Figure:
         existing_figure = await self.get_my_figure(session, user)
         if existing_figure:
+            logger.info(
+                "figure already exists user_id=%s figure_id=%s status=%s",
+                user.id,
+                existing_figure.id,
+                existing_figure.status,
+            )
             return existing_figure
 
         mint_number = await self.figures_repository.get_next_mint_number(session)
@@ -61,6 +82,13 @@ class FigureService:
             raise
 
         await session.refresh(figure)
+        logger.info(
+            "figure created user_id=%s figure_id=%s display_number=%s rarity=%s",
+            user.id,
+            figure.id,
+            figure.display_number,
+            figure.rarity,
+        )
         return figure
 
     async def update_my_presets(
@@ -73,14 +101,26 @@ class FigureService:
         if figure is None:
             return None
 
+        previous_signature = get_generation_input_signature(figure)
         await self.figures_repository.update_presets(session, figure, presets)
         self._apply_source_photo_choice(figure, user, presets.source_photo_type)
+        if get_generation_input_signature(figure) != previous_signature:
+            self._clear_generation_result(figure)
         if has_generation_presets(figure):
             figure.status = FigureStatus.READY_FOR_GENERATION.value
 
         session.add(figure)
         await session.commit()
         await session.refresh(figure)
+        logger.info(
+            "figure presets saved user_id=%s figure_id=%s status=%s "
+            "complete=%s source_photo_type=%s",
+            user.id,
+            figure.id,
+            figure.status,
+            has_generation_presets(figure),
+            figure.source_photo_type,
+        )
         return figure
 
     async def set_uploaded_source_photo(
@@ -95,12 +135,19 @@ class FigureService:
 
         figure.source_photo_type = SourcePhotoType.UPLOADED.value
         figure.source_photo_url = photo_url
+        self._clear_generation_result(figure)
         if has_generation_presets(figure):
             figure.status = FigureStatus.READY_FOR_GENERATION.value
 
         session.add(figure)
         await session.commit()
         await session.refresh(figure)
+        logger.info(
+            "uploaded photo selected user_id=%s figure_id=%s status=%s",
+            user.id,
+            figure.id,
+            figure.status,
+        )
         return figure
 
     def _apply_source_photo_choice(
@@ -117,11 +164,16 @@ class FigureService:
                 raise TelegramProfilePhotoUnavailableError
             figure.source_photo_type = SourcePhotoType.TELEGRAM_PROFILE.value
             figure.source_photo_url = user.photo_url
+            logger.info(
+                "source photo selected figure_id=%s type=telegram_profile",
+                figure.id,
+            )
             return
 
         if source_photo_type == SourcePhotoType.NONE:
             figure.source_photo_type = SourcePhotoType.NONE.value
             figure.source_photo_url = None
+            logger.info("source photo selected figure_id=%s type=none", figure.id)
             return
 
         previous_photo_url = figure.source_photo_url
@@ -132,3 +184,16 @@ class FigureService:
             if previous_photo_type == SourcePhotoType.UPLOADED.value
             else None
         )
+        logger.info(
+            "source photo selected figure_id=%s type=uploaded has_url=%s",
+            figure.id,
+            bool(figure.source_photo_url),
+        )
+
+    def _clear_generation_result(self, figure: Figure) -> None:
+        figure.image_url = None
+        figure.thumbnail_url = None
+        figure.share_image_url = None
+        figure.prompt = None
+        figure.last_generation_error = None
+        logger.info("generation result cleared figure_id=%s", figure.id)

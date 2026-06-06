@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,6 +13,7 @@ from app.services.figures import FigureService
 from app.services.users import UserService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/telegram", response_model=AuthResponse)
@@ -25,6 +27,7 @@ async def auth_telegram(
             settings.TELEGRAM_BOT_TOKEN,
         )
     except TelegramAuthError as exc:
+        logger.warning("telegram auth failed reason=%s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
@@ -35,6 +38,14 @@ async def auth_telegram(
         telegram_user_data,
     )
     figure = await FigureService().get_my_figure(session, user)
+    logger.info(
+        "telegram auth ok user_id=%s telegram_id=%s has_photo=%s figure_id=%s figure_status=%s",
+        user.id,
+        user.telegram_id,
+        bool(user.photo_url),
+        getattr(figure, "id", None),
+        getattr(figure, "status", None),
+    )
     return AuthResponse(
         access_token=create_access_token(subject=str(user.id)),
         user=user,
@@ -64,6 +75,13 @@ async def auth_dev(
         },
     )
     figure = await FigureService().get_my_figure(session, user)
+    logger.info(
+        "dev auth ok user_id=%s telegram_id=%s figure_id=%s figure_status=%s",
+        user.id,
+        user.telegram_id,
+        getattr(figure, "id", None),
+        getattr(figure, "status", None),
+    )
     return AuthResponse(
         access_token=create_access_token(subject=str(user.id)),
         user=user,

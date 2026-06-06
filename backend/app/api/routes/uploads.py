@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from typing import Annotated
 
@@ -13,6 +14,7 @@ from app.services.figures import FigureService
 from app.services.media_storage import CONTENT_TYPE_EXTENSIONS, LocalMediaStorage
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
+logger = logging.getLogger(__name__)
 
 MAX_FIGURE_PHOTO_SIZE_BYTES = 10 * 1024 * 1024
 MIN_FIGURE_PHOTO_SIDE_PX = 256
@@ -26,16 +28,26 @@ async def upload_figure_photo(
 ) -> FigureResponse:
     content_type = file.content_type or ""
     if content_type not in CONTENT_TYPE_EXTENSIONS:
+        logger.warning(
+            "photo upload rejected user_id=%s reason=unsupported_type content_type=%s",
+            current_user.id,
+            content_type,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported image type",
+            detail="Не удалось загрузить фото",
         )
 
     data = await file.read(MAX_FIGURE_PHOTO_SIZE_BYTES + 1)
     if len(data) > MAX_FIGURE_PHOTO_SIZE_BYTES:
+        logger.warning(
+            "photo upload rejected user_id=%s reason=too_large size_bytes=%s",
+            current_user.id,
+            len(data),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Image must be 10 MB or smaller",
+            detail="Не удалось загрузить фото",
         )
 
     validate_image(data)
@@ -50,11 +62,19 @@ async def upload_figure_photo(
         photo_url,
     )
     if figure is None:
+        logger.warning("photo upload rejected user_id=%s reason=figure_not_found", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Figure not found",
         )
 
+    logger.info(
+        "photo upload stored user_id=%s figure_id=%s size_bytes=%s content_type=%s",
+        current_user.id,
+        figure.id,
+        len(data),
+        content_type,
+    )
     return FigureResponse.model_validate(figure)
 
 
@@ -66,11 +86,11 @@ def validate_image(data: bytes) -> None:
     except (UnidentifiedImageError, OSError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file",
+            detail="Не удалось загрузить фото",
         ) from exc
 
     if width < MIN_FIGURE_PHOTO_SIDE_PX or height < MIN_FIGURE_PHOTO_SIDE_PX:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Image must be at least 256x256",
+            detail="Фото слишком маленькое",
         )

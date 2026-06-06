@@ -1,5 +1,10 @@
 import { type Figure } from "../types/figure";
-import { ApiError, getAccessToken, getApiBaseUrl } from "./client";
+import {
+  ApiError,
+  getAccessToken,
+  getApiBaseUrl,
+  normalizeErrorMessage,
+} from "./client";
 
 export async function uploadFigurePhoto(file: File): Promise<Figure> {
   const formData = new FormData();
@@ -19,7 +24,22 @@ export async function uploadFigurePhoto(file: File): Promise<Figure> {
   const data = await parseJson(response);
 
   if (!response.ok) {
-    throw new ApiError(getErrorMessage(data, response.status), response.status, data);
+    const requestId = response.headers.get("x-request-id");
+    if (import.meta.env.DEV) {
+      console.warn("API upload failed", {
+        path: "/uploads/figure-photo",
+        method: "POST",
+        status: response.status,
+        requestId,
+        data,
+      });
+    }
+    throw new ApiError(
+      getErrorMessage(data, response.status),
+      response.status,
+      data,
+      requestId,
+    );
   }
 
   return data as Figure;
@@ -42,7 +62,7 @@ function getErrorMessage(data: unknown, status: number): string {
   if (typeof data === "object" && data !== null && "detail" in data) {
     const detail = (data as { detail: unknown }).detail;
     if (typeof detail === "string") {
-      return detail;
+      return normalizeErrorMessage(detail);
     }
   }
 

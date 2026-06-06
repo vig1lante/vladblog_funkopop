@@ -44,7 +44,8 @@ class UsersRepository:
         user.username = data.get("username")
         user.first_name = data.get("first_name")
         user.last_name = data.get("last_name")
-        user.photo_url = data.get("photo_url")
+        if data.get("photo_url"):
+            user.photo_url = data["photo_url"]
         user.language_code = data.get("language_code")
         user.is_premium = data.get("is_premium", False)
         user.updated_at = utc_now()

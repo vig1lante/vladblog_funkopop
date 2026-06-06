@@ -20,7 +20,17 @@ export type Figure = {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  next_step?: FigureNextStep;
 };
+
+export type FigureNextStep =
+  | "welcome"
+  | "photo"
+  | "presets"
+  | "ready_to_generate"
+  | "generating"
+  | "completed"
+  | "failed";
 
 export type PresetOption = {
   value: string;
@@ -32,6 +42,7 @@ export type FigurePresets = {
   vibes: PresetOption[];
   accessories: PresetOption[];
   backgrounds: PresetOption[];
+  rarities: PresetOption[];
   source_photo_types: PresetOption[];
 };
 
@@ -42,6 +53,7 @@ export type FigurePresetsUpdate = {
   selected_vibe?: string;
   selected_accessory?: string;
   selected_background?: string;
+  rarity?: string;
   source_photo_type?: SourcePhotoType;
   is_public?: boolean;
 };

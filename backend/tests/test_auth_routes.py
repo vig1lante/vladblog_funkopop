@@ -40,17 +40,25 @@ def client(session_maker: async_sessionmaker[AsyncSession]) -> TestClient:
     app.dependency_overrides.clear()
 
 
-def build_init_data(first_name: str = "Vlad", username: str = "vlad") -> str:
+def build_init_data(
+    first_name: str = "Vlad",
+    username: str = "vlad",
+    photo_url: str | None = None,
+) -> str:
+    user = {
+        "id": 123456,
+        "username": username,
+        "first_name": first_name,
+        "last_name": None,
+        "language_code": "ru",
+        "is_premium": False,
+    }
+    if photo_url is not None:
+        user["photo_url"] = photo_url
+
     return build_telegram_init_data(
         bot_token=settings.TELEGRAM_BOT_TOKEN,
-        user={
-            "id": 123456,
-            "username": username,
-            "first_name": first_name,
-            "last_name": None,
-            "language_code": "ru",
-            "is_premium": False,
-        },
+        user=user,
     )
 
 
@@ -98,14 +106,38 @@ async def test_auth_telegram_updates_existing_user_without_duplicate(
     first = client.post("/auth/telegram", json={"init_data": build_init_data()})
     second = client.post(
         "/auth/telegram",
-        json={"init_data": build_init_data(first_name="Vladislav", username="vladik")},
+        json={
+            "init_data": build_init_data(
+                first_name="Vladislav",
+                username="vladblog",
+            )
+        },
     )
 
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.json()["user"]["first_name"] == "Vladislav"
-    assert second.json()["user"]["username"] == "vladik"
+    assert second.json()["user"]["username"] == "vladblog"
     assert await count_users(session_maker) == 1
+
+
+def test_auth_telegram_does_not_clear_existing_photo_when_missing(
+    client: TestClient,
+) -> None:
+    first = client.post(
+        "/auth/telegram",
+        json={
+            "init_data": build_init_data(
+                photo_url="https://telegram.example/avatar.jpg",
+            )
+        },
+    )
+    second = client.post("/auth/telegram", json={"init_data": build_init_data()})
+
+    assert first.status_code == 200
+    assert first.json()["user"]["photo_url"] == "https://telegram.example/avatar.jpg"
+    assert second.status_code == 200
+    assert second.json()["user"]["photo_url"] == "https://telegram.example/avatar.jpg"
 
 
 def test_me_without_token_returns_401(client: TestClient) -> None:

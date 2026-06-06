@@ -1,7 +1,7 @@
 [project]
 name = "vladik-collectibles-backend"
 version = "0.1.0"
-description = "FastAPI backend for the Vladik Collectibles Telegram Mini App MVP."
+description = "FastAPI backend for the VladBlog Collectibles Telegram Mini App MVP."
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.13.0",
@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn[standard]>=0.30.0",
     "pillow>=12.2.0",
     "python-multipart>=0.0.30",
+    "openai>=2.40.0",
 ]
 
 [dependency-groups]

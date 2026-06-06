@@ -1,50 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { type UserResponse } from "../api/auth";
 import { getFigurePresets, updateMyFigurePresets } from "../api/figures";
+import { Button } from "../components/ui/Button";
+import { ErrorMessage } from "../components/ui/ErrorMessage";
+import { GlassPanel } from "../components/ui/GlassPanel";
+import { PageShell } from "../components/ui/PageShell";
+import { Select } from "../components/ui/Select";
+import { Spinner } from "../components/ui/Spinner";
+import { StepIndicator } from "../components/ui/StepIndicator";
+import { getPresetLabel } from "../lib/presetLabels";
+import { buildInitialPresetForm } from "../lib/randomPresetForm";
+import { getTelegramDisplayName } from "../lib/telegramDisplayName";
 import {
   type Figure,
   type FigurePresets,
   type FigurePresetsUpdate,
   type PresetOption,
-  type SourcePhotoType,
 } from "../types/figure";
 
 type PresetsPageProps = {
   figure: Figure;
+  user: UserResponse;
   onSaved: (figure: Figure) => void;
   onBack: () => void;
 };
 
 type PresetKey =
-  | "selected_color"
   | "selected_vibe"
   | "selected_accessory"
   | "selected_background"
-  | "source_photo_type";
+  | "rarity";
 
-const emptyPresets: FigurePresetsUpdate = {
-  selected_color: "purple",
-  selected_vibe: "cyberpunk",
-  selected_accessory: "laptop",
-  selected_background: "neon_server_room",
-  source_photo_type: "telegram_profile" as SourcePhotoType,
-  is_public: true,
-};
-
-export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
+export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps) {
+  const telegramName = getTelegramDisplayName(user);
   const [presets, setPresets] = useState<FigurePresets | null>(null);
-  const [form, setForm] = useState<FigurePresetsUpdate>({
-    selected_color: figure.selected_color ?? emptyPresets.selected_color,
-    selected_vibe: figure.selected_vibe ?? emptyPresets.selected_vibe,
-    selected_accessory:
-      figure.selected_accessory ?? emptyPresets.selected_accessory,
-    selected_background:
-      figure.selected_background ?? emptyPresets.selected_background,
-    source_photo_type:
-      (figure.source_photo_type as SourcePhotoType | null) ??
-      emptyPresets.source_photo_type,
-    is_public: figure.is_public,
-  });
+  const [form, setForm] = useState<FigurePresetsUpdate>({});
   const [status, setStatus] = useState<"loading" | "ready" | "saving" | "error">(
     "loading",
   );
@@ -59,6 +50,7 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
           return;
         }
         setPresets(response);
+        setForm(buildInitialPresetForm(figure, response));
         setStatus("ready");
       })
       .catch((error) => {
@@ -83,11 +75,6 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
 
     return [
       {
-        title: "Цвет",
-        key: "selected_color" as const,
-        options: presets.colors,
-      },
-      {
         title: "Вайб",
         key: "selected_vibe" as const,
         options: presets.vibes,
@@ -103,9 +90,9 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
         options: presets.backgrounds,
       },
       {
-        title: "Источник фото",
-        key: "source_photo_type" as const,
-        options: presets.source_photo_types,
+        title: "Редкость",
+        key: "rarity" as const,
+        options: presets.rarities,
       },
     ];
   }, [presets]);
@@ -115,6 +102,9 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
   }
 
   async function handleSubmit() {
+    if (status === "saving" || status === "loading") {
+      return;
+    }
     setStatus("saving");
     setErrorMessage(null);
 
@@ -130,20 +120,31 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
   }
 
   return (
-    <main className="page-shell game-shell">
-      <section className="game-panel presets-panel">
-        <p className="brand-line">VLADIK COLLECTIBLES</p>
-        <h1>Выбери стиль фигурки</h1>
+    <PageShell>
+      <GlassPanel className="game-panel presets-panel">
+        <StepIndicator current={3} total={5} />
+        <p className="brand-line">VLADBLOG COLLECTIBLES</p>
+        <h1>Настрой стиль фигурки</h1>
         <p className="lead">
-          Собери базовый образ: цвет, вайб, аксессуар, фон и источник фото.
+          Собери базовый образ: вайб, аксессуар, фон и палитру редкости.
         </p>
+        <div className="identity-chip">
+          <span>Имя из Telegram</span>
+          <strong>{telegramName}</strong>
+        </div>
 
-        {status === "loading" && <p className="helper-text">Загружаем пресеты...</p>}
-        {errorMessage && <p className="error-text">{errorMessage}</p>}
+        {status === "loading" && (
+          <div className="skeleton-stack" aria-label="Загружаем пресеты">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+        {errorMessage && <ErrorMessage message={errorMessage} />}
 
         <div className="preset-sections">
           {sections.map((section) => (
-            <PresetSection
+            <PresetSelect
               key={section.key}
               title={section.title}
               options={section.options}
@@ -153,70 +154,55 @@ export function PresetsPage({ figure, onSaved, onBack }: PresetsPageProps) {
           ))}
         </div>
 
-        <label className="public-toggle">
-          <input
-            checked={form.is_public ?? true}
-            type="checkbox"
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                is_public: event.target.checked,
-              }))
-            }
-          />
-          <span>Участвовать публично в будущих паках</span>
-        </label>
+        <p className="style-summary">
+          Твой стиль: {getPresetLabel(form.selected_vibe)} ·{" "}
+          {getPresetLabel(form.selected_accessory)} ·{" "}
+          {getPresetLabel(form.selected_background)} ·{" "}
+          {getPresetLabel(form.rarity)}
+        </p>
 
         <div className="actions-row">
-          <button className="secondary-button" type="button" onClick={onBack}>
+          <Button disabled={status === "saving"} variant="secondary" onClick={onBack}>
             Назад
-          </button>
-          <button
-            className="primary-button"
+          </Button>
+          <Button
             disabled={status === "loading" || status === "saving"}
-            type="button"
+            isLoading={status === "saving"}
+            loadingText="Сохраняем..."
             onClick={handleSubmit}
           >
-            {status === "saving" ? "Сохраняем..." : "Сохранить стиль"}
-          </button>
+            Продолжить
+          </Button>
         </div>
-      </section>
-    </main>
+      </GlassPanel>
+    </PageShell>
   );
 }
 
-type PresetSectionProps = {
+type PresetSelectProps = {
   title: string;
   options: PresetOption[];
   selectedValue: string;
   onSelect: (value: string) => void;
 };
 
-function PresetSection({
+function PresetSelect({
   title,
   options,
   selectedValue,
   onSelect,
-}: PresetSectionProps) {
+}: PresetSelectProps) {
   return (
     <section className="preset-section">
-      <h2>{title}</h2>
-      <div className="preset-grid">
-        {options.map((option) => (
-          <button
-            className={
-              option.value === selectedValue
-                ? "preset-option preset-option-selected"
-                : "preset-option"
-            }
-            key={option.value}
-            type="button"
-            onClick={() => onSelect(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <Select
+        label={title}
+        options={options.map((option) => ({
+          ...option,
+          label: getPresetLabel(option.value),
+        }))}
+        value={selectedValue}
+        onChange={(event) => onSelect(event.target.value)}
+      />
     </section>
   );
 }

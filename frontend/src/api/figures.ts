@@ -1,4 +1,11 @@
-import { apiRequest } from "./client";
+import {
+  ApiError,
+  apiRequest,
+  clearAccessToken,
+  getAccessToken,
+  getApiBaseUrl,
+  normalizeErrorMessage,
+} from "./client";
 import {
   type Figure,
   type FigurePresets,
@@ -24,4 +31,61 @@ export async function updateMyFigurePresets(
     method: "PATCH",
     body: presets,
   });
+}
+
+export async function downloadMyFigureCard(): Promise<Blob> {
+  const headers = new Headers();
+  const token = getAccessToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}/figures/me/card.png`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    const data = await parseDownloadError(response);
+    const requestId = response.headers.get("x-request-id");
+    if (response.status === 401) {
+      clearAccessToken();
+    }
+    throw new ApiError(
+      getDownloadErrorMessage(data, response.status),
+      response.status,
+      data,
+      requestId,
+    );
+  }
+
+  return response.blob();
+}
+
+export function getPublicFigureCardUrl(figureId: string): string {
+  return `${getApiBaseUrl()}/figures/${encodeURIComponent(figureId)}/card.png`;
+}
+
+async function parseDownloadError(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+}
+
+function getDownloadErrorMessage(data: unknown, status: number): string {
+  if (typeof data === "object" && data !== null && "detail" in data) {
+    const detail = (data as { detail: unknown }).detail;
+    if (typeof detail === "string") {
+      return normalizeErrorMessage(detail);
+    }
+  }
+
+  return `API request failed with status ${status}`;
 }

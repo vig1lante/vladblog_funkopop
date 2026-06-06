@@ -5,7 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums.figure import FigureStatus
 from app.models.figure import Figure
+from app.models.generation_job import GenerationJob
 from app.schemas.figure import FigurePresetsUpdateRequest
+
+ACTIVE_GENERATION_JOB_STATUSES = {
+    "pending",
+    "preparing_prompt",
+    "generating",
+}
 
 
 class FiguresRepository:
@@ -23,6 +30,22 @@ class FiguresRepository:
         figure_id: UUID,
     ) -> Figure | None:
         return await session.get(Figure, figure_id)
+
+    async def get_active_job_by_figure_id(
+        self,
+        session: AsyncSession,
+        figure_id: UUID,
+    ) -> GenerationJob | None:
+        result = await session.execute(
+            select(GenerationJob)
+            .where(
+                GenerationJob.figure_id == figure_id,
+                GenerationJob.status.in_(ACTIVE_GENERATION_JOB_STATUSES),
+            )
+            .order_by(GenerationJob.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def get_next_mint_number(self, session: AsyncSession) -> int:
         if session.bind and session.bind.dialect.name == "sqlite":
@@ -64,12 +87,13 @@ class FiguresRepository:
             figure.selected_accessory = presets.selected_accessory.value
         if presets.selected_background is not None:
             figure.selected_background = presets.selected_background.value
+        if presets.rarity is not None:
+            figure.rarity = presets.rarity.value
         if presets.is_public is not None:
             figure.is_public = presets.is_public
 
         if all(
             [
-                figure.selected_color,
                 figure.selected_vibe,
                 figure.selected_accessory,
                 figure.selected_background,
