@@ -37,3 +37,8 @@ def test_attribute_layout_stacks_rows_with_room_for_long_values() -> None:
     assert all(box[2] == boxes[0][2] for box in boxes)
     assert boxes[0][2] - boxes[0][0] >= 840
     assert all(boxes[index][3] < boxes[index + 1][1] for index in range(4))
+
+
+def test_preset_label_uses_expanded_catalog_labels() -> None:
+    assert share_cards._preset_label("software_engineer") == "Разработчик"
+    assert share_cards._preset_label("startup_office") == "Стартап-офис"

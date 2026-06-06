@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from app.core.config import settings
+from app.enums.presets import get_preset_label
 from app.models.figure import Figure
 from app.models.user import User
 
@@ -14,27 +15,6 @@ CARD_WIDTH = 1200
 CARD_HEIGHT = 1720
 CARD_PADDING = 72
 IMAGE_SIZE = 960
-
-PRESET_LABELS = {
-    "crypto": "Крипто",
-    "cyberpunk": "Киберпанк",
-    "meme": "Мемный",
-    "gamer": "Геймер",
-    "magic": "Магия",
-    "samurai": "Самурай",
-    "laptop": "Ноутбук",
-    "coffee": "Кофе",
-    "gamepad": "Геймпад",
-    "bitcoin_coin": "Bitcoin-монета",
-    "microphone": "Микрофон",
-    "drumsticks": "Барабанные палочки",
-    "neon_server_room": "Неоновая серверная",
-    "crypto_chart": "Крипто-график",
-    "space": "Космос",
-    "gaming_room": "Игровая комната",
-    "castle": "Замок",
-    "white_studio": "Белая студия",
-}
 
 RARITY_DROP_RATES = {
     "Epic": "55%",
@@ -444,9 +424,7 @@ def _font(
 
 
 def _preset_label(value: str | None) -> str:
-    if value is None:
-        return "Не выбрано"
-    return PRESET_LABELS.get(value, value)
+    return get_preset_label(value)
 
 
 def _user_label(user: User) -> str:

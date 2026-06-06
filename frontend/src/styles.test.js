@@ -122,6 +122,19 @@ describe("frontend styles", () => {
     }
   });
 
+  it("adds emoji labels for expanded style presets", () => {
+    for (const label of [
+      "👨‍💻 Разработчик",
+      "📷 Фотограф",
+      "📷 Камера",
+      "🧘 Коврик для йоги",
+      "🏢 Стартап-офис",
+      "🚉 Вокзал",
+    ]) {
+      expect(presetLabels).toContain(label);
+    }
+  });
+
   it("uses updated user-facing copy", () => {
     expect(welcomePage).toContain("Преврати свою индивидуальность");
     expect(welcomePage).toContain("поделись ей с другими");

@@ -279,6 +279,59 @@ def test_get_figure_presets_returns_available_options(client: TestClient) -> Non
     ]
 
 
+def test_get_figure_presets_returns_large_style_catalog(client: TestClient) -> None:
+    response = client.get("/figures/presets")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["vibes"]) >= 100
+    assert len(payload["accessories"]) >= 90
+    assert len(payload["backgrounds"]) >= 90
+    for category in ["vibes", "accessories", "backgrounds"]:
+        values = [option["value"] for option in payload[category]]
+        labels = [option["label"] for option in payload[category]]
+        assert len(values) == len(set(values))
+        assert len(labels) == len(set(labels))
+
+    vibe_values = {option["value"] for option in payload["vibes"]}
+    assert {
+        "software_engineer",
+        "ai_researcher",
+        "photographer",
+        "chef",
+        "teacher",
+        "runner",
+        "chess_player",
+        "gardener",
+        "k_pop",
+        "language_learner",
+    }.issubset(vibe_values)
+
+    accessory_values = {option["value"] for option in payload["accessories"]}
+    assert {
+        "camera",
+        "guitar",
+        "chess_piece",
+        "yoga_mat",
+        "passport",
+        "plant_pot",
+        "vr_headset",
+        "dumbbell",
+    }.issubset(accessory_values)
+
+    background_values = {option["value"] for option in payload["backgrounds"]}
+    assert {
+        "music_studio",
+        "library",
+        "science_lab",
+        "skate_park",
+        "coffee_shop",
+        "startup_office",
+        "greenhouse",
+        "train_station",
+    }.issubset(background_values)
+
+
 def test_patch_presets_without_figure_returns_404(client: TestClient) -> None:
     response = client.patch(
         "/figures/me/presets",
@@ -347,6 +400,31 @@ def test_patch_presets_updates_figure_and_marks_ready(client: TestClient) -> Non
     assert payload["is_public"] is False
     assert payload["status"] == "ready_for_generation"
     assert payload["next_step"] == "ready_to_generate"
+
+
+def test_patch_presets_accepts_expanded_style_catalog(client: TestClient) -> None:
+    headers = auth_headers(client, photo_url="https://cdn.telegram.example/avatar.jpg")
+    client.post("/figures/me", headers=headers)
+
+    response = client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={
+            "selected_vibe": "software_engineer",
+            "selected_accessory": "camera",
+            "selected_background": "startup_office",
+            "rarity": "Mythic",
+            "source_photo_type": "telegram_profile",
+            "is_public": False,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected_vibe"] == "software_engineer"
+    assert payload["selected_accessory"] == "camera"
+    assert payload["selected_background"] == "startup_office"
+    assert payload["status"] == "ready_for_generation"
 
 
 def test_photo_choice_routes_to_presets_before_generation(client: TestClient) -> None:

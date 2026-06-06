@@ -8,6 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_async_session
+from app.enums.presets import (
+    ACCESSORY_OPTIONS,
+    BACKGROUND_OPTIONS,
+    COLOR_OPTIONS,
+    SOURCE_PHOTO_TYPE_OPTIONS,
+    VIBE_OPTIONS,
+)
 from app.models.figure import Figure
 from app.models.user import User
 from app.schemas.figure import (
@@ -30,39 +37,16 @@ from app.services.share_cards import render_figure_share_card
 router = APIRouter(prefix="/figures", tags=["figures"])
 logger = logging.getLogger(__name__)
 
+
+def _preset_options(options: tuple[tuple[str, str], ...]) -> list[PresetOption]:
+    return [PresetOption(value=value, label=label) for value, label in options]
+
+
 PRESET_OPTIONS = FigurePresetsResponse(
-    colors=[
-        PresetOption(value="red", label="Красный"),
-        PresetOption(value="blue", label="Синий"),
-        PresetOption(value="green", label="Зелёный"),
-        PresetOption(value="purple", label="Фиолетовый"),
-        PresetOption(value="black", label="Чёрный"),
-        PresetOption(value="gold", label="Золотой"),
-    ],
-    vibes=[
-        PresetOption(value="crypto", label="Крипто"),
-        PresetOption(value="cyberpunk", label="Киберпанк"),
-        PresetOption(value="meme", label="Мемный"),
-        PresetOption(value="gamer", label="Геймер"),
-        PresetOption(value="magic", label="Магия"),
-        PresetOption(value="samurai", label="Самурай"),
-    ],
-    accessories=[
-        PresetOption(value="laptop", label="Ноутбук"),
-        PresetOption(value="coffee", label="Кофе"),
-        PresetOption(value="gamepad", label="Геймпад"),
-        PresetOption(value="bitcoin_coin", label="Bitcoin-монета"),
-        PresetOption(value="microphone", label="Микрофон"),
-        PresetOption(value="drumsticks", label="Барабанные палочки"),
-    ],
-    backgrounds=[
-        PresetOption(value="neon_server_room", label="Неоновая серверная"),
-        PresetOption(value="crypto_chart", label="Крипто-график"),
-        PresetOption(value="space", label="Космос"),
-        PresetOption(value="gaming_room", label="Игровая комната"),
-        PresetOption(value="castle", label="Замок"),
-        PresetOption(value="white_studio", label="Белая студия"),
-    ],
+    colors=_preset_options(COLOR_OPTIONS),
+    vibes=_preset_options(VIBE_OPTIONS),
+    accessories=_preset_options(ACCESSORY_OPTIONS),
+    backgrounds=_preset_options(BACKGROUND_OPTIONS),
     rarities=[
         PresetOption(value="Epic", label="Epic"),
         PresetOption(value="Mythic", label="Mythic"),
@@ -76,11 +60,7 @@ PRESET_OPTIONS = FigurePresetsResponse(
             label="Foil Founder Legendary",
         ),
     ],
-    source_photo_types=[
-        PresetOption(value="telegram_profile", label="Фото Telegram"),
-        PresetOption(value="uploaded", label="Загруженное фото"),
-        PresetOption(value="none", label="Без фото"),
-    ],
+    source_photo_types=_preset_options(SOURCE_PHOTO_TYPE_OPTIONS),
 )
 
 
