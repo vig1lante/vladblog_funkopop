@@ -51,8 +51,8 @@ const draftFigure: Figure = {
 };
 
 describe("buildInitialPresetForm", () => {
-  it("uses random initial values for a draft figure when presets open", () => {
-    const randomValues = [0.65, 0.8, 0.2, 0.9];
+  it("leaves optional style presets empty and randomizes rarity for a draft figure", () => {
+    const randomValues = [0.9];
     const form = buildInitialPresetForm(
       draftFigure,
       presets,
@@ -60,9 +60,9 @@ describe("buildInitialPresetForm", () => {
     );
 
     expect(form).toEqual({
-      selected_vibe: "magic",
-      selected_accessory: "coffee",
-      selected_background: "neon_server_room",
+      selected_vibe: null,
+      selected_accessory: null,
+      selected_background: null,
       rarity: "Legendary",
     });
   });

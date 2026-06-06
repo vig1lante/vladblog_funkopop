@@ -84,6 +84,8 @@ class FigureResponse(BaseModel):
         if self.source_photo_type in {"telegram_profile", "uploaded"}:
             if not self.source_photo_url:
                 return "photo"
+        if self.status == "ready_for_generation":
+            return "ready_to_generate"
         if not all(
             [
                 self.selected_vibe,
@@ -92,8 +94,6 @@ class FigureResponse(BaseModel):
             ]
         ):
             return "presets"
-        if self.status == "ready_for_generation":
-            return "ready_to_generate"
         return "presets"
 
 

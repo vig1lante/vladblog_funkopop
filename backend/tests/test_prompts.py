@@ -57,6 +57,23 @@ def test_build_figure_prompt_makes_each_selected_preset_mandatory() -> None:
     assert "Do not omit the selected theme/vibe, accessory, or background" in prompt
 
 
+def test_build_figure_prompt_omits_empty_style_presets() -> None:
+    figure = make_prompt_figure()
+    figure.selected_vibe = None
+    figure.selected_accessory = None
+    figure.selected_background = None
+
+    prompt = build_figure_prompt(figure)
+
+    assert "User-selected design:" not in prompt
+    assert "Theme/vibe:" not in prompt
+    assert "Accessory:" not in prompt
+    assert "Background inside the box:" not in prompt
+    assert "Mandatory selected detail rules:" not in prompt
+    assert "Every selected design detail is mandatory" not in prompt
+    assert "selected presets" not in prompt
+
+
 def test_build_figure_prompt_adds_reference_photo_instruction() -> None:
     prompt = build_figure_prompt(make_prompt_figure("uploaded"))
 

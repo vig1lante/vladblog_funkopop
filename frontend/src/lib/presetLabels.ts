@@ -359,7 +359,7 @@ const presetLabels: Record<string, string> = {
 
 export function getPresetLabel(value: string | null | undefined): string {
   if (!value) {
-    return "Не выбрано";
+    return "Пусто";
   }
 
   return presetLabels[value] ?? value;

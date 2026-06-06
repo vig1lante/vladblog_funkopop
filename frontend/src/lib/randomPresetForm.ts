@@ -12,19 +12,17 @@ export function buildInitialPresetForm(
 ): FigurePresetsUpdate {
   if (figure.status === "draft") {
     return {
-      selected_vibe: pickRandomOption(presets.vibes, random),
-      selected_accessory: pickRandomOption(presets.accessories, random),
-      selected_background: pickRandomOption(presets.backgrounds, random),
+      selected_vibe: null,
+      selected_accessory: null,
+      selected_background: null,
       rarity: pickRandomOption(presets.rarities, random),
     };
   }
 
   return {
-    selected_vibe: figure.selected_vibe ?? firstOptionValue(presets.vibes),
-    selected_accessory:
-      figure.selected_accessory ?? firstOptionValue(presets.accessories),
-    selected_background:
-      figure.selected_background ?? firstOptionValue(presets.backgrounds),
+    selected_vibe: figure.selected_vibe,
+    selected_accessory: figure.selected_accessory,
+    selected_background: figure.selected_background,
     rarity: figure.rarity ?? firstOptionValue(presets.rarities),
   };
 }

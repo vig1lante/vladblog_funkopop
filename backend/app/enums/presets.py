@@ -374,7 +374,7 @@ def _enum_members(options: tuple[PresetChoice, ...]) -> dict[str, str]:
 
 def get_preset_label(value: str | None) -> str:
     if not value:
-        return "Не выбрано"
+        return "Пусто"
     return PRESET_LABELS.get(value, value)
 
 

@@ -32,6 +32,12 @@ type PresetKey =
   | "selected_background"
   | "rarity";
 
+const EMPTY_PRESET_VALUE = "__empty__";
+const EMPTY_PRESET_OPTION: PresetOption = {
+  value: EMPTY_PRESET_VALUE,
+  label: "Пусто",
+};
+
 export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps) {
   const telegramName = getTelegramDisplayName(user);
   const [presets, setPresets] = useState<FigurePresets | null>(null);
@@ -78,27 +84,34 @@ export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps)
         title: "Вайб",
         key: "selected_vibe" as const,
         options: presets.vibes,
+        allowEmpty: true,
       },
       {
         title: "Аксессуар",
         key: "selected_accessory" as const,
         options: presets.accessories,
+        allowEmpty: true,
       },
       {
         title: "Фон",
         key: "selected_background" as const,
         options: presets.backgrounds,
+        allowEmpty: true,
       },
       {
         title: "Редкость",
         key: "rarity" as const,
         options: presets.rarities,
+        allowEmpty: false,
       },
     ];
   }, [presets]);
 
   function updateSelection(key: PresetKey, value: string) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => ({
+      ...current,
+      [key]: value === EMPTY_PRESET_VALUE ? null : value,
+    }));
   }
 
   async function handleSubmit() {
@@ -147,8 +160,16 @@ export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps)
             <PresetSelect
               key={section.key}
               title={section.title}
-              options={section.options}
-              selectedValue={form[section.key] ?? ""}
+              options={
+                section.allowEmpty
+                  ? [EMPTY_PRESET_OPTION, ...section.options]
+                  : section.options
+              }
+              selectedValue={
+                section.allowEmpty
+                  ? form[section.key] ?? EMPTY_PRESET_VALUE
+                  : form[section.key] ?? ""
+              }
               onSelect={(value) => updateSelection(section.key, value)}
             />
           ))}
@@ -198,7 +219,10 @@ function PresetSelect({
         label={title}
         options={options.map((option) => ({
           ...option,
-          label: getPresetLabel(option.value),
+          label:
+            option.value === EMPTY_PRESET_VALUE
+              ? option.label
+              : getPresetLabel(option.value),
         }))}
         value={selectedValue}
         onChange={(event) => onSelect(event.target.value)}

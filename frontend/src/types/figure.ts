@@ -52,10 +52,10 @@ export type FigurePresets = {
 export type SourcePhotoType = "telegram_profile" | "uploaded" | "none";
 
 export type FigurePresetsUpdate = {
-  selected_color?: string;
-  selected_vibe?: string;
-  selected_accessory?: string;
-  selected_background?: string;
+  selected_color?: string | null;
+  selected_vibe?: string | null;
+  selected_accessory?: string | null;
+  selected_background?: string | null;
   rarity?: string;
   source_photo_type?: SourcePhotoType;
   is_public?: boolean;

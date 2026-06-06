@@ -12,11 +12,13 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.core.database import Base, get_async_session
+from app.enums.figure import FigureStatus
 from app.main import app
 from app.models.figure import Figure
 from app.models.generation_job import GenerationJob
 from app.models.user import utc_now
 from app.services import generation as generation_service
+from app.services.figures import has_generation_presets
 from tests.helpers import build_telegram_init_data
 
 
@@ -174,6 +176,19 @@ def make_ready_figure(client: TestClient, headers: dict[str, str]) -> None:
         },
     )
     assert response.status_code == 200
+
+
+def test_failed_empty_style_figure_keeps_generation_presets_complete() -> None:
+    figure = Figure(
+        rarity="Mythic",
+        source_photo_type="none",
+        status=FigureStatus.FAILED.value,
+        selected_vibe=None,
+        selected_accessory=None,
+        selected_background=None,
+    )
+
+    assert has_generation_presets(figure)
 
 
 def test_get_my_figure_without_figure_returns_404(client: TestClient) -> None:
@@ -402,6 +417,36 @@ def test_patch_presets_updates_figure_and_marks_ready(client: TestClient) -> Non
     assert payload["source_photo_type"] == "telegram_profile"
     assert payload["source_photo_url"] == telegram_photo_url
     assert payload["is_public"] is False
+    assert payload["status"] == "ready_for_generation"
+    assert payload["next_step"] == "ready_to_generate"
+
+
+def test_patch_presets_allows_empty_style_presets_and_marks_ready(
+    client: TestClient,
+) -> None:
+    headers = auth_headers(client)
+    client.post("/figures/me", headers=headers)
+
+    response = client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={
+            "selected_vibe": None,
+            "selected_accessory": None,
+            "selected_background": None,
+            "rarity": "Mythic",
+            "source_photo_type": "none",
+            "is_public": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected_vibe"] is None
+    assert payload["selected_accessory"] is None
+    assert payload["selected_background"] is None
+    assert payload["rarity"] == "Mythic"
+    assert payload["source_photo_type"] == "none"
     assert payload["status"] == "ready_for_generation"
     assert payload["next_step"] == "ready_to_generate"
 

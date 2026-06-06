@@ -79,14 +79,30 @@ class FiguresRepository:
         figure: Figure,
         presets: FigurePresetsUpdateRequest,
     ) -> Figure:
-        if presets.selected_color is not None:
-            figure.selected_color = presets.selected_color.value
-        if presets.selected_vibe is not None:
-            figure.selected_vibe = presets.selected_vibe.value
-        if presets.selected_accessory is not None:
-            figure.selected_accessory = presets.selected_accessory.value
-        if presets.selected_background is not None:
-            figure.selected_background = presets.selected_background.value
+        if "selected_color" in presets.model_fields_set:
+            figure.selected_color = (
+                presets.selected_color.value
+                if presets.selected_color is not None
+                else None
+            )
+        if "selected_vibe" in presets.model_fields_set:
+            figure.selected_vibe = (
+                presets.selected_vibe.value
+                if presets.selected_vibe is not None
+                else None
+            )
+        if "selected_accessory" in presets.model_fields_set:
+            figure.selected_accessory = (
+                presets.selected_accessory.value
+                if presets.selected_accessory is not None
+                else None
+            )
+        if "selected_background" in presets.model_fields_set:
+            figure.selected_background = (
+                presets.selected_background.value
+                if presets.selected_background is not None
+                else None
+            )
         if presets.rarity is not None:
             figure.rarity = presets.rarity.value
         if presets.is_public is not None:

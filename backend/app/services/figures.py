@@ -12,6 +12,17 @@ from app.schemas.figure import FigurePresetsUpdateRequest
 from app.services.rarity import roll_rarity
 
 logger = logging.getLogger(__name__)
+STYLE_PRESET_FIELDS = frozenset(
+    ("selected_vibe", "selected_accessory", "selected_background")
+)
+STYLE_PRESET_COMPLETED_STATUSES = frozenset(
+    (
+        FigureStatus.READY_FOR_GENERATION.value,
+        FigureStatus.GENERATING.value,
+        FigureStatus.COMPLETED.value,
+        FigureStatus.FAILED.value,
+    )
+)
 
 
 def format_display_number(mint_number: int) -> str:
@@ -23,14 +34,21 @@ class TelegramProfilePhotoUnavailableError(ValueError):
 
 
 def has_generation_presets(figure: Figure) -> bool:
-    return all(
+    has_style_selection = all(
         [
             figure.selected_vibe,
             figure.selected_accessory,
             figure.selected_background,
-            figure.source_photo_type,
         ]
     )
+    return bool(
+        figure.source_photo_type
+        and (has_style_selection or figure.status in STYLE_PRESET_COMPLETED_STATUSES)
+    )
+
+
+def completes_style_preset_step(presets: FigurePresetsUpdateRequest) -> bool:
+    return STYLE_PRESET_FIELDS.issubset(presets.model_fields_set)
 
 
 def get_generation_input_signature(figure: Figure) -> tuple[str | None, ...]:
@@ -106,7 +124,9 @@ class FigureService:
         self._apply_source_photo_choice(figure, user, presets.source_photo_type)
         if get_generation_input_signature(figure) != previous_signature:
             self._clear_generation_result(figure)
-        if has_generation_presets(figure):
+        if has_generation_presets(figure) or (
+            completes_style_preset_step(presets) and figure.source_photo_type
+        ):
             figure.status = FigureStatus.READY_FOR_GENERATION.value
 
         session.add(figure)

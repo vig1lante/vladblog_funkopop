@@ -89,6 +89,41 @@ def build_selected_preset_prompt(value: str | None) -> str:
     return f"{readable_value} ({label}; selected id: {value})"
 
 
+def build_selected_design_prompt(figure: Figure) -> list[str]:
+    selected_lines: list[str] = []
+    if figure.selected_vibe:
+        selected_lines.append(
+            f"Theme/vibe: {build_selected_preset_prompt(figure.selected_vibe)}"
+        )
+    if figure.selected_accessory:
+        selected_lines.append(
+            f"Accessory: {build_selected_preset_prompt(figure.selected_accessory)}"
+        )
+    if figure.selected_background:
+        selected_lines.append(
+            "Background inside the box: "
+            f"{build_selected_preset_prompt(figure.selected_background)}"
+        )
+    if not selected_lines:
+        return []
+
+    return [
+        "User-selected design:",
+        *selected_lines,
+        "",
+        "Mandatory selected detail rules:",
+        "Every selected design detail is mandatory and must be visible in "
+        "the final image.",
+        "Do not omit the selected theme/vibe, accessory, or background, "
+        "even if one detail is subtle.",
+        "Show the theme/vibe through the figure outfit, pose, package art, "
+        "or scene cues. Show the accessory clearly in the figure's hands, "
+        "beside the figure, or attached to the package. Make the selected "
+        "background visible inside the box behind the figure.",
+        "",
+    ]
+
+
 def build_figure_prompt(
     figure: Figure,
     user: User | None = None,
@@ -96,6 +131,7 @@ def build_figure_prompt(
     rarity: str | None = None,
 ) -> str:
     prompt_rarity = rarity or figure.rarity
+    selected_design_prompt = build_selected_design_prompt(figure)
     if figure.source_photo_type in {"telegram_profile", "uploaded"}:
         photo_instruction = (
             "Use the provided user photo as the main visual reference. Preserve "
@@ -104,10 +140,16 @@ def build_figure_prompt(
             "but convert everything into a stylized Funko Pop collectible toy."
         )
     else:
-        photo_instruction = (
-            "Do not use a real person reference. Create a fictional stylized "
-            "collectible figure based only on the selected presets."
-        )
+        if selected_design_prompt:
+            photo_instruction = (
+                "Do not use a real person reference. Create a fictional stylized "
+                "collectible figure based only on the selected presets."
+            )
+        else:
+            photo_instruction = (
+                "Do not use a real person reference. Create a fictional stylized "
+                "collectible figure."
+            )
 
     return "\n".join(
         [
@@ -124,22 +166,7 @@ def build_figure_prompt(
             f'Figure number: "{figure.display_number}"',
             build_telegram_name_prompt(user),
             "",
-            "User-selected design:",
-            f"Theme/vibe: {build_selected_preset_prompt(figure.selected_vibe)}",
-            f"Accessory: {build_selected_preset_prompt(figure.selected_accessory)}",
-            "Background inside the box: "
-            f"{build_selected_preset_prompt(figure.selected_background)}",
-            "",
-            "Mandatory selected detail rules:",
-            "Every selected design detail is mandatory and must be visible in "
-            "the final image.",
-            "Do not omit the selected theme/vibe, accessory, or background, "
-            "even if one detail is subtle.",
-            "Show the theme/vibe through the figure outfit, pose, package art, "
-            "or scene cues. Show the accessory clearly in the figure's hands, "
-            "beside the figure, or attached to the package. Make the selected "
-            "background visible inside the box behind the figure.",
-            "",
+            *selected_design_prompt,
             "Package palette style:",
             build_rarity_style_prompt(prompt_rarity),
             "",
