@@ -59,10 +59,17 @@ class LocalMediaStorage:
         self,
         display_number: str,
         rarity: str,
+        *,
+        variant: str = "normal",
     ) -> str:
         directory = self.root_path / "mock"
         directory.mkdir(parents=True, exist_ok=True)
-        file_path = directory / "generated-figure.png"
+        file_name = (
+            "generated-figure-foil.png"
+            if variant == "foil"
+            else "generated-figure.png"
+        )
+        file_path = directory / file_name
 
         image = Image.new("RGB", (768, 768), "#f8fafc")
         draw = ImageDraw.Draw(image)
@@ -80,20 +87,26 @@ class LocalMediaStorage:
             draw.text((x, y), line, fill="#0f172a", font=font)
             y += 52
         image.save(file_path, "PNG")
-        logger.info("media ensured kind=mock_generated file=%s", file_path.relative_to(self.root_path))
+        logger.info(
+            "media ensured kind=mock_generated file=%s",
+            file_path.relative_to(self.root_path),
+        )
 
-        return f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/mock/generated-figure.png"
+        return f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/mock/{file_name}"
 
     def save_generated_figure(
         self,
         figure_id: UUID,
         job_id: UUID,
         data: bytes,
+        *,
+        variant: str = "normal",
     ) -> str:
         directory = self.root_path / "generated-figures"
         directory.mkdir(parents=True, exist_ok=True)
 
-        file_name = f"{figure_id}_{job_id}.png"
+        suffix = "_foil" if variant == "foil" else ""
+        file_name = f"{figure_id}_{job_id}{suffix}.png"
         file_path = directory / file_name
         file_path.write_bytes(data)
         logger.info(

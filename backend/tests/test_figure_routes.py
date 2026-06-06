@@ -266,10 +266,6 @@ def test_get_figure_presets_returns_available_options(client: TestClient) -> Non
         "Mythic",
         "Legendary",
         "Founder Legendary",
-        "Foil Epic",
-        "Foil Mythic",
-        "Foil Legendary",
-        "Foil Founder Legendary",
     ]
     assert payload["source_photo_types"][0]["value"] == "telegram_profile"
     assert [option["value"] for option in payload["source_photo_types"]] == [
@@ -662,13 +658,23 @@ async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     assert payload["figure"]["status"] == "completed"
     assert payload["figure"]["next_step"] == "completed"
     assert payload["figure"]["image_url"] == payload["job"]["result_image_url"]
+    assert payload["figure"]["foil_rarity"] == "Foil Legendary"
+    assert payload["figure"]["foil_image_url"].endswith(
+        "/media/mock/generated-figure-foil.png"
+    )
     assert payload["figure"]["prompt"] == payload["job"]["prompt"]
+    assert payload["figure"]["foil_prompt"]
+    assert payload["foil_figure"]["rarity"] == "Foil Legendary"
+    assert payload["foil_figure"]["image_url"] == payload["figure"]["foil_image_url"]
+    assert "holographic reflections" in payload["foil_figure"]["prompt"]
     assert (tmp_path / "mock" / "generated-figure.png").exists()
+    assert (tmp_path / "mock" / "generated-figure-foil.png").exists()
     assert await count_generation_jobs(session_maker) == 1
 
     refreshed = client.get("/figures/me", headers=headers)
     assert refreshed.status_code == 200
     assert refreshed.json()["image_url"] == payload["job"]["result_image_url"]
+    assert refreshed.json()["foil_image_url"] == payload["figure"]["foil_image_url"]
 
 
 def test_generate_figure_mock_mode_is_case_insensitive_and_never_uses_openai(
@@ -878,12 +884,19 @@ async def test_generate_figure_openai_offloads_blocking_image_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls = []
+    active_calls = 0
+    max_active_calls = 0
 
     class FakeClient:
         pass
 
     async def fake_to_thread(func: object, *args: object) -> bytes:
+        nonlocal active_calls, max_active_calls
+        active_calls += 1
+        max_active_calls = max(max_active_calls, active_calls)
         calls.append((func, args))
+        await generation_service.asyncio.sleep(0.01)
+        active_calls -= 1
         return b"\x89PNG\r\n\x1a\n"
 
     monkeypatch.setattr(settings, "GENERATION_MODE", "openai")
@@ -899,8 +912,12 @@ async def test_generate_figure_openai_offloads_blocking_image_call(
 
     assert response.status_code == 200
     assert response.json()["job"]["status"] == "completed"
-    assert calls
-    assert calls[0][0] is generation_service._generate_openai_image
+    assert len(calls) == 2
+    assert max_active_calls == 2
+    assert all(call[0] is generation_service._generate_openai_image for call in calls)
+    prompts = [str(call[1][2]) for call in calls]
+    assert any("metallic gold" in prompt for prompt in prompts)
+    assert any("holographic reflections" in prompt for prompt in prompts)
 
 
 def test_generate_figure_openai_uses_uploaded_photo_reference(

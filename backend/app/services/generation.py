@@ -23,6 +23,7 @@ from app.repositories.figures import FiguresRepository
 from app.services.figures import has_generation_presets
 from app.services.media_storage import LocalMediaStorage
 from app.services.prompts import build_figure_prompt
+from app.services.rarity import get_base_rarity, get_foil_rarity
 from app.services.telegram_photos import download_telegram_profile_photo
 
 logger = logging.getLogger(__name__)
@@ -133,15 +134,30 @@ async def run_mock_generation(
     job: GenerationJob,
     figure: Figure,
 ) -> GenerationJob:
+    foil_rarity = figure.foil_rarity or get_foil_rarity(figure.rarity)
+    foil_prompt = job.foil_prompt or figure.foil_prompt or build_figure_prompt(
+        figure,
+        rarity=foil_rarity,
+    )
     result_url = LocalMediaStorage().ensure_mock_generated_figure(
         figure.display_number,
         figure.rarity,
     )
+    foil_result_url = LocalMediaStorage().ensure_mock_generated_figure(
+        figure.display_number,
+        foil_rarity,
+        variant="foil",
+    )
     job.status = GenerationJobStatus.COMPLETED.value
     job.result_image_url = result_url
+    job.foil_prompt = foil_prompt
+    job.foil_result_image_url = foil_result_url
     job.completed_at = utc_now()
     figure.status = FigureStatus.COMPLETED.value
     figure.image_url = result_url
+    figure.foil_rarity = foil_rarity
+    figure.foil_image_url = foil_result_url
+    figure.foil_prompt = foil_prompt
     figure.generation_attempts += 1
     figure.last_generation_error = None
 
@@ -165,6 +181,12 @@ async def run_openai_generation(
     try:
         client = get_openai_client()
         figure.generation_attempts += 1
+        normal_prompt = job.prompt or build_figure_prompt(figure)
+        foil_rarity = figure.foil_rarity or get_foil_rarity(figure.rarity)
+        foil_prompt = job.foil_prompt or build_figure_prompt(
+            figure,
+            rarity=foil_rarity,
+        )
         logger.info(
             "openai generation started user_id=%s figure_id=%s job_id=%s "
             "model=%s size=%s quality=%s source_photo_type=%s "
@@ -181,16 +203,30 @@ async def run_openai_generation(
         )
         await _normalize_telegram_reference_photo(session, job, figure)
         await session.commit()
-        image_bytes = await asyncio.to_thread(
-            _generate_openai_image,
-            client,
-            figure,
-            job.prompt or "",
+        image_bytes, foil_image_bytes = await asyncio.gather(
+            asyncio.to_thread(
+                _generate_openai_image,
+                client,
+                figure,
+                normal_prompt,
+            ),
+            asyncio.to_thread(
+                _generate_openai_image,
+                client,
+                figure,
+                foil_prompt,
+            ),
         )
         result_url = LocalMediaStorage().save_generated_figure(
             figure.id,
             job.id,
             image_bytes,
+        )
+        foil_result_url = LocalMediaStorage().save_generated_figure(
+            figure.id,
+            job.id,
+            foil_image_bytes,
+            variant="foil",
         )
     except OpenAIClientConfigError:
         raise
@@ -209,12 +245,19 @@ async def run_openai_generation(
         ) from exc
 
     job.status = GenerationJobStatus.COMPLETED.value
+    job.prompt = normal_prompt
     job.result_image_url = result_url
+    job.foil_prompt = foil_prompt
+    job.foil_result_image_url = foil_result_url
     job.completed_at = utc_now()
     job.error_code = None
     job.error_message = None
     figure.status = FigureStatus.COMPLETED.value
     figure.image_url = result_url
+    figure.prompt = normal_prompt
+    figure.foil_rarity = foil_rarity
+    figure.foil_image_url = foil_result_url
+    figure.foil_prompt = foil_prompt
     figure.last_generation_error = None
 
     session.add_all([job, figure])
@@ -225,7 +268,7 @@ async def run_openai_generation(
         job.user_id,
         figure.id,
         job.id,
-        len(image_bytes),
+        len(image_bytes) + len(foil_image_bytes),
     )
     return job
 
@@ -277,16 +320,25 @@ class FigureGenerationService:
             mode,
         )
         job.status = GenerationJobStatus.PREPARING_PROMPT.value
-        prompt = build_figure_prompt(figure, user)
+        base_rarity = get_base_rarity(figure.rarity)
+        foil_rarity = get_foil_rarity(base_rarity)
+        figure.rarity = base_rarity
+        figure.foil_rarity = foil_rarity
+        figure.foil_image_url = None
+        prompt = build_figure_prompt(figure, user, rarity=base_rarity)
+        foil_prompt = build_figure_prompt(figure, user, rarity=foil_rarity)
         job.prompt = prompt
+        job.foil_prompt = foil_prompt
         figure.prompt = prompt
+        figure.foil_prompt = foil_prompt
         logger.info(
             "generation prompt prepared user_id=%s figure_id=%s job_id=%s "
-            "prompt_chars=%s",
+            "prompt_chars=%s foil_prompt_chars=%s",
             user.id,
             figure.id,
             job.id,
             len(prompt),
+            len(foil_prompt),
         )
 
         job.status = GenerationJobStatus.GENERATING.value

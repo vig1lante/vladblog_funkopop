@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { FigureCard } from "../components/FigureCard";
 import { type UserResponse } from "../api/auth";
@@ -19,14 +19,24 @@ type MyFigurePageProps = {
 };
 
 export function MyFigurePage({ figure, user }: MyFigurePageProps) {
+  const [showFoilVersion, setShowFoilVersion] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadComplete, setIsDownloadComplete] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const modelUsername = getTelegramUsernameLabel(user);
   const modelProfileUrl = getTelegramProfileUrl(user);
+  const foilFigure = getFoilFigure(figure);
+  const displayedFigure = showFoilVersion && foilFigure ? foilFigure : figure;
   const showPrompt = Boolean(
-    figure.prompt && (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === "local"),
+    displayedFigure.prompt &&
+      (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === "local"),
   );
+
+  useEffect(() => {
+    if (!figure.foil_image_url) {
+      setShowFoilVersion(false);
+    }
+  }, [figure.foil_image_url]);
 
   async function handleDownload(): Promise<void> {
     if (isDownloadComplete || isDownloading) {
@@ -69,13 +79,28 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
         <h1>Фигурка готова</h1>
         <div className="figure-result-card">
           <FigureCard
-            figure={figure}
+            key={`${displayedFigure.rarity}-${displayedFigure.image_url ?? ""}`}
+            figure={displayedFigure}
             modelProfileUrl={modelProfileUrl}
             modelUsername={modelUsername}
           />
         </div>
+        {foilFigure && (
+          <label className="foil-version-toggle">
+            <span className="foil-version-label">Foil версия</span>
+            <input
+              className="foil-version-checkbox"
+              type="checkbox"
+              checked={showFoilVersion}
+              onChange={(event) => setShowFoilVersion(event.target.checked)}
+            />
+            <span className="foil-version-switch" aria-hidden="true">
+              <span className="foil-version-switch-thumb" />
+            </span>
+          </label>
+        )}
         <p className="lead">
-          {figure.display_number} уже в коллекции VladBlog Collectibles.
+          {displayedFigure.display_number} уже в коллекции VladBlog Collectibles.
         </p>
         <div className="actions-row">
           <Button
@@ -101,12 +126,25 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
         {showPrompt && (
           <details className="prompt-details">
             <summary>Технические детали</summary>
-            <pre>{figure.prompt}</pre>
+            <pre>{displayedFigure.prompt}</pre>
           </details>
         )}
       </GlassPanel>
     </PageShell>
   );
+}
+
+function getFoilFigure(figure: Figure): Figure | null {
+  if (!figure.foil_image_url) {
+    return null;
+  }
+
+  return {
+    ...figure,
+    rarity: figure.foil_rarity ?? `Foil ${figure.rarity}`,
+    image_url: figure.foil_image_url,
+    prompt: figure.foil_prompt ?? figure.prompt,
+  };
 }
 
 function DownloadIcon() {

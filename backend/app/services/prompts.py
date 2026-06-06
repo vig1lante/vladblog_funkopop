@@ -76,7 +76,13 @@ def build_telegram_name_prompt(user: User | None) -> str:
     )
 
 
-def build_figure_prompt(figure: Figure, user: User | None = None) -> str:
+def build_figure_prompt(
+    figure: Figure,
+    user: User | None = None,
+    *,
+    rarity: str | None = None,
+) -> str:
+    prompt_rarity = rarity or figure.rarity
     if figure.source_photo_type in {"telegram_profile", "uploaded"}:
         photo_instruction = (
             "Use the provided user photo as the main visual reference. Preserve "
@@ -111,7 +117,7 @@ def build_figure_prompt(figure: Figure, user: User | None = None) -> str:
             f"Background inside the box: {figure.selected_background}",
             "",
             "Package palette style:",
-            build_rarity_style_prompt(figure.rarity),
+            build_rarity_style_prompt(prompt_rarity),
             "",
             "Composition:",
             "Centered product shot, full box visible, clean studio lighting, "

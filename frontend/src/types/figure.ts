@@ -15,6 +15,9 @@ export type Figure = {
   thumbnail_url?: string | null;
   share_image_url?: string | null;
   prompt?: string | null;
+  foil_rarity?: string | null;
+  foil_image_url?: string | null;
+  foil_prompt?: string | null;
   description?: string | null;
   traits_json?: Record<string, unknown> | null;
   is_public: boolean;
@@ -66,6 +69,8 @@ export type GenerationJob = {
   model: string | null;
   prompt: string | null;
   result_image_url: string | null;
+  foil_prompt?: string | null;
+  foil_result_image_url?: string | null;
   attempt: number;
   max_attempts: number;
   error_code: string | null;
@@ -79,4 +84,5 @@ export type GenerationJob = {
 export type FigureGenerationResponse = {
   job: GenerationJob;
   figure: Figure;
+  foil_figure?: Figure | null;
 };

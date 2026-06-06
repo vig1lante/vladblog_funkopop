@@ -24,6 +24,7 @@ from app.schemas.figure import (
     FigurePresetsUpdateRequest,
     FigureResponse,
     PresetOption,
+    build_foil_figure_response,
 )
 from app.services.figures import FigureService, TelegramProfilePhotoUnavailableError
 from app.services.generation import (
@@ -52,13 +53,6 @@ PRESET_OPTIONS = FigurePresetsResponse(
         PresetOption(value="Mythic", label="Mythic"),
         PresetOption(value="Legendary", label="Legendary"),
         PresetOption(value="Founder Legendary", label="Founder Legendary"),
-        PresetOption(value="Foil Epic", label="Foil Epic"),
-        PresetOption(value="Foil Mythic", label="Foil Mythic"),
-        PresetOption(value="Foil Legendary", label="Foil Legendary"),
-        PresetOption(
-            value="Foil Founder Legendary",
-            label="Foil Founder Legendary",
-        ),
     ],
     source_photo_types=_preset_options(SOURCE_PHOTO_TYPE_OPTIONS),
 )
@@ -181,9 +175,11 @@ async def generate_my_figure(
         job.status,
         figure.status,
     )
+    figure_response = FigureResponse.model_validate(figure)
     return FigureGenerationResponse(
         job=job,
-        figure=figure,
+        figure=figure_response,
+        foil_figure=build_foil_figure_response(figure_response),
     )
 
 

@@ -197,8 +197,14 @@ describe("frontend styles", () => {
     expect(myFigurePage).toContain("onClick={isDownloadComplete ? undefined : handleDownload}");
     expect(myFigurePage).toContain("isDownloadComplete");
     expect(myFigurePage).toContain("download-complete");
+    expect(myFigurePage).toContain("Foil версия");
+    expect(myFigurePage).toContain("foil-version-toggle");
+    expect(myFigurePage).toContain("getFoilFigure");
     expect(styles).toContain(".download-button.download-complete");
     expect(styles).toContain(".actions-row .download-button");
+    expect(styles).toContain(".foil-version-toggle");
+    expect(styles).toContain(".foil-version-switch");
+    expect(styles).toContain(".foil-version-switch-thumb");
     expect(styles).toContain("border-radius: 18px");
     expect(styles).toContain("height: 50px");
     expect(figureCard).toContain("getApprovedRarityStyle");

@@ -32,6 +32,8 @@ class GenerationJob(Base):
     model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     result_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foil_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foil_result_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(255), nullable=True)

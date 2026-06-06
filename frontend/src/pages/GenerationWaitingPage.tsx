@@ -236,7 +236,8 @@ function isCompleted(job: GenerationJob, figure: Figure): boolean {
   return (
     job.status === "completed" &&
     figure.status === "completed" &&
-    Boolean(figure.image_url)
+    Boolean(figure.image_url) &&
+    Boolean(figure.foil_image_url)
   );
 }
 

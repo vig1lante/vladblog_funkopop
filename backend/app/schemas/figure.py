@@ -59,6 +59,9 @@ class FigureResponse(BaseModel):
     thumbnail_url: str | None = None
     share_image_url: str | None = None
     prompt: str | None = None
+    foil_rarity: str | None = None
+    foil_image_url: str | None = None
+    foil_prompt: str | None = None
     description: str | None = None
     traits_json: dict | None = None
     is_public: bool
@@ -102,6 +105,8 @@ class GenerationJobResponse(BaseModel):
     model: str | None = None
     prompt: str | None = None
     result_image_url: str | None = None
+    foil_prompt: str | None = None
+    foil_result_image_url: str | None = None
     attempt: int
     max_attempts: int
     error_code: str | None = None
@@ -117,3 +122,17 @@ class GenerationJobResponse(BaseModel):
 class FigureGenerationResponse(BaseModel):
     job: GenerationJobResponse
     figure: FigureResponse
+    foil_figure: FigureResponse | None = None
+
+
+def build_foil_figure_response(figure: FigureResponse) -> FigureResponse | None:
+    if not figure.foil_image_url:
+        return None
+
+    return figure.model_copy(
+        update={
+            "rarity": figure.foil_rarity or figure.rarity,
+            "image_url": figure.foil_image_url,
+            "prompt": figure.foil_prompt,
+        },
+    )

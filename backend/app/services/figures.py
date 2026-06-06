@@ -195,5 +195,8 @@ class FigureService:
         figure.thumbnail_url = None
         figure.share_image_url = None
         figure.prompt = None
+        figure.foil_rarity = None
+        figure.foil_image_url = None
+        figure.foil_prompt = None
         figure.last_generation_error = None
         logger.info("generation result cleared figure_id=%s", figure.id)

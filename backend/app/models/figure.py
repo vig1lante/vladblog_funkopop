@@ -55,6 +55,9 @@ class Figure(Base):
     thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     share_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foil_rarity: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    foil_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    foil_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     safe_prompt_json: Mapped[dict[str, Any] | None] = mapped_column(
         JSON().with_variant(JSONB, "postgresql"),
         nullable=True,
