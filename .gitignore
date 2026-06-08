@@ -34,3 +34,5 @@ project_data/logs/*
 
 # Local brainstorming mockups
 .superpowers/
+
+/db_data
