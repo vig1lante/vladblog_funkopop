@@ -351,6 +351,175 @@ input[type="file"] {
   justify-items: center;
   margin-inline: auto;
   animation: resultReveal 320ms ease-out both;
+  perspective: 1000px;
+}
+
+.figure-motion-card {
+  --motion-rotate-x: 0deg;
+  --motion-rotate-y: 0deg;
+  --motion-translate-x: 0px;
+  --motion-translate-y: 0px;
+  --motion-pointer-x: 50%;
+  --motion-pointer-y: 50%;
+  --motion-angle: 115deg;
+  position: relative;
+  width: min(100%, 360px);
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  transform:
+    translate3d(var(--motion-translate-x), var(--motion-translate-y), 0)
+    rotateX(var(--motion-rotate-x))
+    rotateY(var(--motion-rotate-y));
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  transition:
+    transform 330ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 160ms ease;
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+}
+
+.figure-motion-card.is-motion-active {
+  transition-duration: 55ms;
+  cursor: grabbing;
+}
+
+.figure-motion-surface {
+  position: relative;
+  width: min(100%, 342px);
+  display: grid;
+  place-items: center;
+}
+
+.figure-motion-card .figure-card {
+  position: relative;
+  z-index: 2;
+  transform: none;
+  backface-visibility: hidden;
+}
+
+.figure-motion-shadow {
+  position: absolute;
+  inset: 7% 4% -8%;
+  z-index: -1;
+  border-radius: 28px;
+  background:
+    radial-gradient(
+      ellipse at var(--motion-pointer-x) var(--motion-pointer-y),
+      color-mix(in srgb, var(--motion-glow) 92%, transparent),
+      rgba(0, 0, 0, 0.28) 42%,
+      transparent 74%
+    );
+  filter: blur(18px);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.figure-motion-prism,
+.figure-motion-glare,
+.figure-motion-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  pointer-events: none;
+}
+
+.figure-motion-glare {
+  z-index: 4;
+  background:
+    radial-gradient(
+      circle at var(--motion-pointer-x) var(--motion-pointer-y),
+      rgba(255, 255, 255, 0.3) 0 8%,
+      color-mix(in srgb, var(--motion-accent) 18%, transparent) 14%,
+      transparent 36%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.44;
+}
+
+.figure-motion-edge {
+  inset: 1px;
+  z-index: 5;
+  border: 1px solid color-mix(in srgb, var(--motion-accent) 28%, transparent);
+  box-shadow:
+    inset 0 0 24px rgba(255, 255, 255, 0.12),
+    inset 0 -18px 30px rgba(0, 0, 0, 0.26);
+}
+
+.figure-motion-prism {
+  z-index: 5;
+  opacity: 0;
+}
+
+.figure-motion-normal .figure-motion-prism {
+  opacity: 0;
+}
+
+.figure-motion-normal .figure-motion-glare {
+  opacity: 0.34;
+}
+
+.figure-motion-foil .figure-motion-shadow {
+  opacity: 0.86;
+}
+
+.figure-motion-foil .figure-motion-surface {
+  width: min(100%, 342px);
+}
+
+.figure-motion-foil .figure-card {
+  transform: none;
+}
+
+.figure-motion-foil .figure-motion-prism {
+  background:
+    linear-gradient(
+      118deg,
+      transparent 0 35%,
+      rgba(255, 255, 255, 0.5) 45%,
+      transparent 60%
+    ),
+    conic-gradient(
+      from var(--motion-angle) at var(--motion-pointer-x) var(--motion-pointer-y),
+      rgba(255, 255, 255, 0.16),
+      rgba(216, 246, 255, 0.24),
+      rgba(255, 202, 243, 0.28),
+      rgba(255, 242, 176, 0.22),
+      color-mix(in srgb, var(--motion-accent-2) 34%, transparent),
+      rgba(255, 255, 255, 0.16)
+    );
+  background-size: 260% 260%, 100% 100%;
+  background-position:
+    var(--motion-pointer-x) var(--motion-pointer-y),
+    0 0;
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  filter: contrast(1.12) saturate(1.4);
+  animation: figureMotionPrismSweep 4.8s ease-in-out infinite;
+}
+
+.figure-motion-foil .figure-motion-glare {
+  background:
+    radial-gradient(
+      circle at var(--motion-pointer-x) var(--motion-pointer-y),
+      rgba(255, 255, 255, 0.58) 0 7%,
+      rgba(216, 246, 255, 0.22) 12%,
+      transparent 34%
+    );
+  opacity: 0.78;
+}
+
+.figure-motion-foil .figure-motion-edge {
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    inset 0 0 28px rgba(255, 255, 255, 0.18),
+    inset 0 -22px 30px rgba(0, 0, 0, 0.32),
+    0 0 24px color-mix(in srgb, var(--motion-glow) 48%, transparent);
 }
 
 .foil-version-toggle {
@@ -1824,12 +1993,27 @@ input[type="file"] {
   }
 }
 
+@keyframes figureMotionPrismSweep {
+  0%,
+  100% {
+    filter: contrast(1.08) saturate(1.28);
+  }
+  50% {
+    filter: contrast(1.16) saturate(1.48);
+  }
+}
+
 @media (max-width: 720px) {
   .game-panel {
     padding: 28px 16px;
   }
 
   .figure-card {
+    width: min(100%, 328px);
+  }
+
+  .figure-motion-surface,
+  .figure-motion-foil .figure-motion-surface {
     width: min(100%, 328px);
   }
 
@@ -1863,5 +2047,15 @@ input[type="file"] {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .figure-motion-card,
+  .figure-motion-card.is-motion-active {
+    transform: none !important;
+  }
+
+  .figure-motion-prism,
+  .figure-motion-glare {
+    opacity: 0.28 !important;
   }
 }

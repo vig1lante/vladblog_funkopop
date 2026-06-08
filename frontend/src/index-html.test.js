@@ -13,4 +13,20 @@ describe("Telegram bootstrap", () => {
     expect(readyIndex).toBeGreaterThan(-1);
     expect(bundleIndex).toBeGreaterThan(readyIndex);
   });
+
+  it("requests fullscreen and expanded viewport before the React bundle loads", () => {
+    const fullscreenIndex = html.indexOf("requestFullscreen?.()");
+    const expandIndex = html.indexOf("expand?.()");
+    const disableSwipesIndex = html.indexOf("disableVerticalSwipes?.()");
+    const bundleIndex = html.indexOf('/src/main.tsx');
+
+    expect(html).toContain("supportsTelegramVersion(7, 7)");
+    expect(html).toContain("supportsTelegramVersion(8, 0)");
+    expect(fullscreenIndex).toBeGreaterThan(-1);
+    expect(expandIndex).toBeGreaterThan(-1);
+    expect(disableSwipesIndex).toBeGreaterThan(-1);
+    expect(fullscreenIndex).toBeLessThan(bundleIndex);
+    expect(expandIndex).toBeLessThan(bundleIndex);
+    expect(disableSwipesIndex).toBeLessThan(bundleIndex);
+  });
 });
