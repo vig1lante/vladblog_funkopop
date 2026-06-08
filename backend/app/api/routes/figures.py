@@ -108,6 +108,11 @@ async def download_public_figure_card(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Figure not found",
         )
+    if not figure.is_public:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Figure not found",
+        )
     _ensure_card_variant_ready(figure, variant)
 
     user = await session.get(User, figure.user_id)

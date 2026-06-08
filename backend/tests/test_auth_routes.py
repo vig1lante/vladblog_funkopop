@@ -12,6 +12,16 @@ from app.main import app
 from app.models.user import User
 from tests.helpers import build_telegram_init_data
 
+TEST_BOT_TOKEN = "123456:test-token"
+TEST_JWT_SECRET = "x" * 32
+
+
+@pytest.fixture(autouse=True)
+def _configure_test_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "DEV_AUTH_ENABLED", True, raising=False)
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", TEST_JWT_SECRET)
+    monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", TEST_BOT_TOKEN)
+
 
 @pytest.fixture()
 async def session_maker() -> AsyncGenerator[async_sessionmaker[AsyncSession], None]:
@@ -88,6 +98,29 @@ def test_auth_telegram_creates_user_and_returns_token(client: TestClient) -> Non
     assert payload["figure"] is None
 
 
+def test_auth_telegram_rejects_placeholder_bot_token(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "your_bot_token")
+    response = client.post(
+        "/auth/telegram",
+        json={
+            "init_data": build_telegram_init_data(
+                bot_token="your_bot_token",
+                user={
+                    "id": 123456,
+                    "username": "vlad",
+                    "first_name": "Vlad",
+                },
+            )
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Telegram auth is not configured"}
+
+
 def test_auth_dev_returns_local_preview_user(client: TestClient) -> None:
     response = client.post("/auth/dev")
 
@@ -96,6 +129,17 @@ def test_auth_dev_returns_local_preview_user(client: TestClient) -> None:
     assert payload["access_token"]
     assert payload["user"]["telegram_id"] == 100000001
     assert payload["figure"] is None
+
+
+def test_auth_dev_requires_explicit_dev_auth_flag(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "DEV_AUTH_ENABLED", False, raising=False)
+
+    response = client.post("/auth/dev")
+
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

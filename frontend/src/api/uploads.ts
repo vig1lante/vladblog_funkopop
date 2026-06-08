@@ -5,6 +5,7 @@ import {
   getApiBaseUrl,
   normalizeErrorMessage,
 } from "./client";
+import { clientLogger } from "../lib/logger";
 
 export async function uploadFigurePhoto(file: File): Promise<Figure> {
   const formData = new FormData();
@@ -25,15 +26,13 @@ export async function uploadFigurePhoto(file: File): Promise<Figure> {
 
   if (!response.ok) {
     const requestId = response.headers.get("x-request-id");
-    if (import.meta.env.DEV) {
-      console.warn("API upload failed", {
-        path: "/uploads/figure-photo",
-        method: "POST",
-        status: response.status,
-        requestId,
-        data,
-      });
-    }
+    clientLogger.warn("API upload failed", {
+      path: "/uploads/figure-photo",
+      method: "POST",
+      status: response.status,
+      requestId,
+    });
+    clientLogger.debug("API upload error payload", { requestId, data });
     throw new ApiError(
       getErrorMessage(data, response.status),
       response.status,

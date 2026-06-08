@@ -9,7 +9,7 @@ Telegram Mini App для создания персональной AI-фигур
 - Один collectible slot на пользователя, mint number, rarity и `next_step`.
 - Photo-first flow: Telegram photo sync, upload photo или режим без фото.
 - Presets, ready-to-generate summary, generation waiting и финальная figure page.
-- Mock image generation и optional OpenAI image generation только через backend env.
+- Mock image generation и optional OpenAI image generation только через корневой env.
 
 Не входят в этот этап: daily packs, trades, collection.
 
@@ -42,6 +42,12 @@ docker compose up --build
 - postgres: `localhost:5432`
 
 Outside Telegram используй local preview button.
+
+Runtime data is stored at the project root:
+
+- `db_data/pgdata/` - PostgreSQL data directory used by Docker Compose.
+- `project_data/media/` - uploaded, mock, and generated images.
+- `project_data/logs/` - project JSONL audit logs.
 
 ## Dev Database Reset
 
@@ -92,7 +98,43 @@ GENERATION_ENABLED=false
 до создания job и не запускает mock/OpenAI генерацию. `GENERATION_MODE=false`
 тоже трактуется как выключенная генерация для защиты от старой конфигурации.
 
-Ключ хранится только в backend env.
+Ключ хранится только в корневом `.env` и используется только backend-кодом.
+
+## Логирование
+
+Уровень backend-логов задаётся через:
+
+```env
+LOG_LEVEL=INFO
+```
+
+Допустимые значения: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
+
+Уровень frontend-логов в browser console задаётся через:
+
+```env
+VITE_LOG_LEVEL=warn
+```
+
+Допустимые значения: `debug`, `info`, `warn`, `error`, `silent`.
+
+Generation audit logs are written to:
+
+```env
+GENERATION_AUDIT_LOG_PATH=./project_data/logs/generation-audit.jsonl
+```
+
+In Docker Compose this path is mounted from the same root-level
+`project_data/logs/` folder.
+
+Docker Compose service stdout/stderr is also mirrored to:
+
+- `project_data/logs/postgres.log`
+- `project_data/logs/backend.log`
+- `project_data/logs/frontend.log`
+- `project_data/logs/bot.log`
+
+The same output remains visible through `docker compose logs`.
 
 ## Cloudflare Tunnel Reminder
 

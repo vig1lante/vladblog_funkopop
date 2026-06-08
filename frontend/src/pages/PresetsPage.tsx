@@ -9,6 +9,7 @@ import { PageShell } from "../components/ui/PageShell";
 import { Select } from "../components/ui/Select";
 import { Spinner } from "../components/ui/Spinner";
 import { StepIndicator } from "../components/ui/StepIndicator";
+import { clientLogger } from "../lib/logger";
 import { getPresetLabel } from "../lib/presetLabels";
 import { buildInitialPresetForm } from "../lib/randomPresetForm";
 import { getTelegramDisplayName } from "../lib/telegramDisplayName";
@@ -58,11 +59,20 @@ export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps)
         setPresets(response);
         setForm(buildInitialPresetForm(figure, response));
         setStatus("ready");
+        clientLogger.debug("Figure presets loaded", {
+          colors: response.colors.length,
+          vibes: response.vibes.length,
+          accessories: response.accessories.length,
+          backgrounds: response.backgrounds.length,
+        });
       })
       .catch((error) => {
         if (!isActive) {
           return;
         }
+        clientLogger.warn("Figure presets load failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
         setStatus("error");
         setErrorMessage(
           error instanceof Error ? error.message : "Не удалось загрузить пресеты",
@@ -123,8 +133,15 @@ export function PresetsPage({ figure, user, onSaved, onBack }: PresetsPageProps)
 
     try {
       const updatedFigure = await updateMyFigurePresets(form);
+      clientLogger.info("Figure presets saved", {
+        figureId: updatedFigure.id,
+        status: updatedFigure.status,
+      });
       onSaved(updatedFigure);
     } catch (error) {
+      clientLogger.warn("Figure presets save failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setStatus("error");
       setErrorMessage(
         error instanceof Error ? error.message : "Не удалось сохранить стиль",

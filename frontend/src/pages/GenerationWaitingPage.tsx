@@ -6,6 +6,7 @@ import { ErrorMessage } from "../components/ui/ErrorMessage";
 import { GlassPanel } from "../components/ui/GlassPanel";
 import { PageShell } from "../components/ui/PageShell";
 import { StepIndicator } from "../components/ui/StepIndicator";
+import { clientLogger } from "../lib/logger";
 import { type Figure, type GenerationJob } from "../types/figure";
 
 type GenerationWaitingPageProps = {
@@ -78,12 +79,19 @@ export function GenerationWaitingPage({
         if (!isActive) {
           return;
         }
+        clientLogger.info("Generation job started from waiting page", {
+          jobId: response.job.id,
+          status: response.job.status,
+        });
         setJob(response.job);
         setJobId(response.job.id);
         onFigureUpdatedRef.current(response.figure);
       })
       .catch((reason) => {
         if (isActive) {
+          clientLogger.warn("Generation job start failed from waiting page", {
+            message: reason instanceof Error ? reason.message : String(reason),
+          });
           setError(normalizeGenerationError(reason));
         }
       })
@@ -126,14 +134,26 @@ export function GenerationWaitingPage({
         onFigureUpdatedRef.current(updatedFigure);
         if (isCompleted(updatedJob, updatedFigure)) {
           completedRef.current = true;
+          clientLogger.info("Generation job completed", {
+            jobId: updatedJob.id,
+            figureId: updatedFigure.id,
+          });
           onCompletedRef.current(updatedFigure);
           return;
         }
         if (updatedJob.status === "failed") {
+          clientLogger.warn("Generation job failed", {
+            jobId: updatedJob.id,
+            errorCode: updatedJob.error_code,
+          });
           setError(updatedJob.error_message || friendlyGenerationError);
         }
-      } catch {
+      } catch (reason) {
         if (isActive) {
+          clientLogger.warn("Generation job poll failed", {
+            jobId: pollingJobId,
+            message: reason instanceof Error ? reason.message : String(reason),
+          });
           setError("Не удалось проверить статус генерации.");
         }
       } finally {

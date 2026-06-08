@@ -11,7 +11,11 @@ logger = logging.getLogger(__name__)
 
 def download_telegram_profile_photo(telegram_id: int) -> bytes | None:
     try:
-        photos = _telegram_api_json("getUserProfilePhotos", user_id=telegram_id, limit=1)
+        photos = _telegram_api_json(
+            "getUserProfilePhotos",
+            user_id=telegram_id,
+            limit=1,
+        )
         if not photos.get("ok"):
             return None
         photo_sets = photos.get("result", {}).get("photos", [])
@@ -57,7 +61,11 @@ def inspect_telegram_profile_photo(
         "get_file": None,
     }
     try:
-        photos = _telegram_api_json("getUserProfilePhotos", user_id=telegram_id, limit=1)
+        photos = _telegram_api_json(
+            "getUserProfilePhotos",
+            user_id=telegram_id,
+            limit=1,
+        )
         photo_sets = photos.get("result", {}).get("photos", [])
         result["get_user_profile_photos"] = {
             "ok": photos.get("ok"),

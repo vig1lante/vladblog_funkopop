@@ -53,6 +53,7 @@ def main() -> None:
     while True:
         try:
             updates = _api("getUpdates", offset=offset, timeout=30).get("result", [])
+            logger.debug("telegram bot updates received count=%s", len(updates))
             for update in updates:
                 offset = max(offset, int(update["update_id"]) + 1)
                 _handle_update(update)
@@ -72,6 +73,7 @@ def _handle_update(update: dict[str, Any]) -> None:
     if chat_id is None or not text.startswith("/start"):
         return
 
+    logger.info("telegram bot start handled chat_id=%s", chat_id)
     _api(
         "sendMessage",
         chat_id=chat_id,

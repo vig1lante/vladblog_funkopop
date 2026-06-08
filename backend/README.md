@@ -11,26 +11,31 @@ generation, optional OpenAI image generation, and `next_step` flow status.
 
 ```bash
 uv sync
-cp .env.example .env
+cp ../.env.example ../.env
 ```
 
-For local project runs, prefer the root `../.env`. Backend also accepts
-`backend/.env` as a fallback.
+Backend reads environment variables only from the project root `../.env`.
+Do not create `backend/.env`.
 
 Set these values:
 
 ```text
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/vladik_collectibles
+DOCKER_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/vladik_collectibles
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 PUBLIC_FRONTEND_URL=http://localhost:5173
 PUBLIC_BACKEND_URL=http://localhost:8000
-JWT_SECRET_KEY=change_me
+LOG_LEVEL=INFO
+JWT_SECRET_KEY=local_dev_only_jwt_secret_change_me_32
 JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=10080
+DEV_AUTH_ENABLED=true
 STORAGE_BACKEND=local
-LOCAL_STORAGE_PATH=./media
+LOCAL_STORAGE_PATH=./project_data/media
 PUBLIC_MEDIA_BASE_URL=
 RESET_DATABASE_ON_START=false
 GENERATION_MODE=mock
+GENERATION_AUDIT_LOG_PATH=./project_data/logs/generation-audit.jsonl
 OPENAI_API_KEY=
 OPENAI_IMAGE_MODEL=gpt-image-2
 OPENAI_IMAGE_SIZE=1024x1024
@@ -48,6 +53,14 @@ From the project root:
 ```bash
 docker compose up -d postgres
 ```
+
+Use `DATABASE_URL` for direct backend runs from the host. Docker compose passes
+`DOCKER_DATABASE_URL` to the backend container as `DATABASE_URL`.
+
+Docker Compose stores PostgreSQL data in the project-root `db_data/pgdata/`
+folder, so database data survives container rebuilds and is read back from the
+same folder. The extra `pgdata/` level keeps the mount root clean for Docker and
+placeholder files.
 
 ## Migrations
 
@@ -181,4 +194,7 @@ curl -X POST http://localhost:8000/figures/me/generate \
   -H "Authorization: Bearer <token>"
 ```
 
-Generated files are saved under `/media/generated-figures/...`.
+Generated files are saved under `/media/generated-figures/...` and persisted on
+the host under `../project_data/media/generated-figures/`.
+
+Generation audit logs are saved under `../project_data/logs/`.

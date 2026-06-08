@@ -1,9 +1,38 @@
 import json
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Any
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+PROJECT_ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+
+PLACEHOLDER_JWT_SECRET_KEYS = {
+    "change_me",
+    "changeme",
+    "your_jwt_secret",
+    "your_jwt_secret_here",
+}
+PLACEHOLDER_TELEGRAM_BOT_TOKENS = {
+    "",
+    "your_bot_token",
+    "your_bot_token_here",
+}
+ALLOWED_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+LOG_LEVEL_ALIASES = {"WARN": "WARNING"}
+
+
+def is_placeholder_jwt_secret(value: str) -> bool:
+    stripped = value.strip()
+    return (
+        stripped in PLACEHOLDER_JWT_SECRET_KEYS
+        or stripped.startswith("local_dev_only_")
+    )
+
+
+def is_placeholder_telegram_bot_token(value: str) -> bool:
+    return value.strip() in PLACEHOLDER_TELEGRAM_BOT_TOKENS
 
 
 class Settings(BaseSettings):
@@ -20,16 +49,18 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = [
         "http://localhost:5173"
     ]
+    DEV_AUTH_ENABLED: bool = False
     TELEGRAM_BOT_TOKEN: str = "your_bot_token_here"
-    JWT_SECRET_KEY: str = "change_me"
+    JWT_SECRET_KEY: str = "local_dev_only_jwt_secret_change_me_32"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
     STORAGE_BACKEND: str = "local"
-    LOCAL_STORAGE_PATH: str = "./media"
+    LOCAL_STORAGE_PATH: str = "./project_data/media"
     PUBLIC_MEDIA_BASE_URL: str = ""
     GENERATION_ENABLED: bool = True
     GENERATION_MODE: str = "mock"
     GENERATION_BACKGROUND_TASKS: bool = True
+    GENERATION_AUDIT_LOG_PATH: str = "./project_data/logs/generation-audit.jsonl"
     OPENAI_API_KEY: str = ""
     OPENAI_IMAGE_MODEL: str = "gpt-image-2"
     OPENAI_IMAGE_SIZE: str = "1024x1024"
@@ -37,7 +68,7 @@ class Settings(BaseSettings):
     OPENAI_IMAGE_MAX_ATTEMPTS: int = 2
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"),
+        env_file=(PROJECT_ROOT_ENV_FILE,),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -63,8 +94,20 @@ class Settings(BaseSettings):
 
         raise ValueError("BACKEND_CORS_ORIGINS must be a list or string")
 
+    @field_validator("LOG_LEVEL", mode="before")
+    @classmethod
+    def normalize_log_level(cls, value: Any) -> str:
+        raw_level = str(value).strip().upper()
+        level = LOG_LEVEL_ALIASES.get(raw_level, raw_level)
+        if level not in ALLOWED_LOG_LEVELS:
+            raise ValueError(
+                "LOG_LEVEL must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+            )
+        return level
+
     @model_validator(mode="after")
     def normalize_public_urls(self) -> "Settings":
+        self.APP_ENV = self.APP_ENV.strip().lower() or "local"
         self.PUBLIC_FRONTEND_URL = self.PUBLIC_FRONTEND_URL.rstrip("/")
         self.PUBLIC_BACKEND_URL = self.PUBLIC_BACKEND_URL.rstrip("/")
         self.PUBLIC_MEDIA_BASE_URL = (
@@ -78,8 +121,17 @@ class Settings(BaseSettings):
             dict.fromkeys(origin for origin in origins if origin)
         )
 
-        if self.APP_ENV != "local" and not self.JWT_SECRET_KEY.strip():
-            raise ValueError("JWT_SECRET_KEY must not be empty outside local")
+        if self.APP_ENV != "local":
+            jwt_secret = self.JWT_SECRET_KEY.strip()
+            if is_placeholder_jwt_secret(jwt_secret) or len(jwt_secret.encode()) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be a non-placeholder value of at least "
+                    "32 bytes outside local"
+                )
+            if is_placeholder_telegram_bot_token(self.TELEGRAM_BOT_TOKEN):
+                raise ValueError(
+                    "TELEGRAM_BOT_TOKEN must be configured outside local"
+                )
         return self
 
 

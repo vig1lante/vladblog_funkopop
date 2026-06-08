@@ -5,6 +5,7 @@ import { replaceSession } from "./api/client";
 import { generateMyFigure } from "./api/generation";
 import { createMyFigure, getMyFigure } from "./api/figures";
 import { getFlowStep } from "./lib/flow";
+import { clientLogger } from "./lib/logger";
 import { GenerationReadyPage } from "./pages/GenerationReadyPage";
 import { GenerationWaitingPage } from "./pages/GenerationWaitingPage";
 import { MyFigurePage } from "./pages/MyFigurePage";
@@ -41,23 +42,33 @@ export default function App() {
 
     const initData = webApp?.initData;
     if (!initData) {
+      clientLogger.info("Telegram initData missing, switching to preview auth");
       setAuthState({ type: "dev" });
       return;
     }
 
     let isActive = true;
+    clientLogger.debug("Telegram auth started");
 
     authTelegram(initData)
       .then((response) => {
         if (!isActive) {
           return;
         }
+        clientLogger.info("Telegram auth completed", {
+          userId: response.user.id,
+          telegramId: response.user.telegram_id,
+          hasFigure: Boolean(response.figure),
+        });
         applyAuthResponse(response);
       })
       .catch((error) => {
         if (!isActive) {
           return;
         }
+        clientLogger.warn("Telegram auth failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
         setAuthState({
           type: "error",
           message:
@@ -116,8 +127,12 @@ export default function App() {
     setWelcomeError(null);
     try {
       updateFigure(await createMyFigure());
+      clientLogger.info("Figure creation completed");
       setWelcomeCompleted(true);
     } catch (error) {
+      clientLogger.warn("Figure creation failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setWelcomeError(
         error instanceof Error ? error.message : "Не удалось создать фигурку",
       );
@@ -133,8 +148,16 @@ export default function App() {
     setIsDevAuthenticating(true);
     setAuthState({ type: "loading" });
     try {
-      applyAuthResponse(await authDev());
+      const response = await authDev();
+      clientLogger.info("Preview auth completed", {
+        userId: response.user.id,
+        telegramId: response.user.telegram_id,
+      });
+      applyAuthResponse(response);
     } catch (error) {
+      clientLogger.warn("Preview auth failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setAuthState({
         type: "error",
         message:
@@ -152,11 +175,19 @@ export default function App() {
     setIsStartingGeneration(true);
     setGenerationError(null);
     try {
+      clientLogger.info("Figure generation start requested");
       const response = await generateMyFigure();
       updateFigure(response.figure);
       setActiveJobId(response.job.id);
       setForcedStep(null);
+      clientLogger.info("Figure generation job accepted", {
+        jobId: response.job.id,
+        status: response.job.status,
+      });
     } catch (error) {
+      clientLogger.warn("Figure generation start failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setGenerationError(
         error instanceof Error
           ? error.message

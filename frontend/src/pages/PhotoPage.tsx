@@ -18,6 +18,7 @@ import {
   getPhotoTooLargeMessage,
   isPhotoTooLargeForQuickUpload,
 } from "../lib/uploadLimits";
+import { clientLogger } from "../lib/logger";
 import { type Figure } from "../types/figure";
 
 type PhotoPageProps = {
@@ -76,16 +77,25 @@ export function PhotoPage({
     const timeout = window.setTimeout(() => controller.abort(), 9000);
     syncAttemptedRef.current = true;
     setStatus("syncing");
+    clientLogger.info("Telegram photo sync started", { userId: user.id });
     syncTelegramPhoto(controller.signal)
       .then((updatedUser) => {
         if (isActive) {
+          clientLogger.info("Telegram photo sync completed", {
+            userId: updatedUser.id,
+            hasPhoto: Boolean(updatedUser.photo_url),
+          });
           setPhotoSyncAttempted(true);
           setStatus("ready");
           onUserUpdated(updatedUser);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (isActive) {
+          clientLogger.warn("Telegram photo sync failed", {
+            userId: user.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
           setPhotoSyncAttempted(true);
           setStatus("ready");
         }
@@ -118,8 +128,16 @@ export function PhotoPage({
       const updatedFigure = await updateMyFigurePresets({
         source_photo_type: currentPhotoType,
       });
+      clientLogger.info("Source photo choice saved", {
+        figureId: updatedFigure.id,
+        sourcePhotoType: updatedFigure.source_photo_type,
+      });
       onSaved(updatedFigure);
     } catch (error) {
+      clientLogger.warn("Source photo choice save failed", {
+        sourcePhotoType: currentPhotoType,
+        message: error instanceof Error ? error.message : String(error),
+      });
       setStatus("ready");
       setActiveAction(null);
       setErrorMessage(
@@ -133,6 +151,10 @@ export function PhotoPage({
       return;
     }
     if (isPhotoTooLargeForQuickUpload(file)) {
+      clientLogger.warn("Photo upload blocked locally", {
+        reason: "too_large",
+        sizeBytes: file.size,
+      });
       setActiveAction(null);
       setStatus("ready");
       setErrorMessage(oversizedPhotoMessage);
@@ -147,12 +169,22 @@ export function PhotoPage({
 
     try {
       const updatedFigure = await uploadFigurePhoto(file);
+      clientLogger.info("Photo upload completed", {
+        figureId: updatedFigure.id,
+        sizeBytes: file.size,
+        contentType: file.type,
+      });
       setPreviewUrl(updatedFigure.source_photo_url);
       onFigureUpdated(updatedFigure);
       setStatus("ready");
       setActiveAction(null);
       URL.revokeObjectURL(objectUrl);
     } catch (error) {
+      clientLogger.warn("Photo upload failed", {
+        sizeBytes: file.size,
+        contentType: file.type,
+        message: error instanceof Error ? error.message : String(error),
+      });
       setStatus("ready");
       setActiveAction(null);
       setErrorMessage(
@@ -174,8 +206,12 @@ export function PhotoPage({
       const updatedFigure = await updateMyFigurePresets({
         source_photo_type: "none",
       });
+      clientLogger.info("No-photo mode saved", { figureId: updatedFigure.id });
       onSaved(updatedFigure);
     } catch (error) {
+      clientLogger.warn("No-photo mode save failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setStatus("ready");
       setActiveAction(null);
       setErrorMessage(
@@ -204,6 +240,9 @@ export function PhotoPage({
     try {
       setDebugInfo(await getTelegramPhotoDebug());
     } catch (error) {
+      clientLogger.warn("Telegram photo debug load failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setErrorMessage(
         error instanceof Error ? error.message : "Не удалось проверить Telegram",
       );

@@ -21,6 +21,7 @@ from app.models.generation_job import GenerationJob
 from app.models.user import User, utc_now
 from app.repositories.figures import FiguresRepository
 from app.services.figures import has_generation_presets
+from app.services.generation_audit import write_generation_audit_event
 from app.services.media_storage import LocalMediaStorage
 from app.services.prompts import build_figure_prompt
 from app.services.rarity import get_base_rarity, get_foil_rarity
@@ -83,6 +84,12 @@ async def create_generation_job(session: AsyncSession, user: User) -> Generation
         job.attempt,
         job.model,
     )
+    write_generation_audit_event(
+        "generation_job_created",
+        user=user,
+        figure=figure,
+        job=job,
+    )
     return job
 
 
@@ -125,8 +132,10 @@ async def run_generation_job_background(job_id: UUID) -> None:
     async with AsyncSessionLocal() as session:
         try:
             await run_generation_job(session, job_id)
-        except Exception:
+        except Exception as exc:
             logger.exception("background generation failed job_id=%s", job_id)
+            await session.rollback()
+            await _mark_background_generation_failed(session, job_id, exc)
 
 
 async def run_mock_generation(
@@ -164,6 +173,13 @@ async def run_mock_generation(
     session.add_all([job, figure])
     await session.commit()
     await session.refresh(job)
+    user = await session.get(User, job.user_id)
+    write_generation_audit_event(
+        "generation_completed",
+        user=user,
+        figure=figure,
+        job=job,
+    )
     logger.info(
         "mock generation completed figure_id=%s job_id=%s result_url_present=%s",
         figure.id,
@@ -263,6 +279,13 @@ async def run_openai_generation(
     session.add_all([job, figure])
     await session.commit()
     await session.refresh(job)
+    user = await session.get(User, job.user_id)
+    write_generation_audit_event(
+        "generation_completed",
+        user=user,
+        figure=figure,
+        job=job,
+    )
     logger.info(
         "openai generation completed user_id=%s figure_id=%s job_id=%s bytes=%s",
         job.user_id,
@@ -300,6 +323,12 @@ class FigureGenerationService:
                 figure.id,
                 active_job.id,
                 active_job.status,
+            )
+            write_generation_audit_event(
+                "generation_reused_active_job",
+                user=user,
+                figure=figure,
+                job=active_job,
             )
             return active_job, figure
 
@@ -409,6 +438,9 @@ class FigureGenerationService:
 
         if not has_generation_presets(figure):
             raise FigureGenerationError("Figure presets are not complete")
+
+        if figure.generation_attempts >= settings.OPENAI_IMAGE_MAX_ATTEMPTS:
+            raise FigureGenerationError("Generation attempt limit reached")
 
         if (
             figure.source_photo_type == SourcePhotoType.UPLOADED.value
@@ -607,6 +639,53 @@ async def _mark_generation_failed(
     figure.last_generation_error = message
     session.add_all([job, figure])
     await session.commit()
+    user = await session.get(User, job.user_id)
+    write_generation_audit_event(
+        "generation_failed",
+        user=user,
+        figure=figure,
+        job=job,
+    )
+
+
+async def _mark_background_generation_failed(
+    session: AsyncSession,
+    job_id: UUID,
+    exc: Exception,
+) -> None:
+    job = await session.get(GenerationJob, job_id)
+    if job is None:
+        logger.warning(
+            "background generation failure not persisted job_id=%s "
+            "reason=job_not_found",
+            job_id,
+        )
+        return
+    if job.status == GenerationJobStatus.FAILED.value:
+        return
+
+    figure = await session.get(Figure, job.figure_id)
+    if figure is None:
+        job.status = GenerationJobStatus.FAILED.value
+        job.error_code = "background_generation_failed"
+        job.error_message = "Generation failed unexpectedly"
+        job.completed_at = utc_now()
+        session.add(job)
+        await session.commit()
+        return
+
+    await _mark_generation_failed(
+        session,
+        job,
+        figure,
+        code="background_generation_failed",
+        message="Generation failed unexpectedly",
+    )
+    logger.warning(
+        "background generation marked failed job_id=%s error_class=%s",
+        job_id,
+        exc.__class__.__name__,
+    )
 
 
 def _openai_error_context(exc: Exception) -> dict[str, object]:

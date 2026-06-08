@@ -51,8 +51,8 @@ const draftFigure: Figure = {
 };
 
 describe("buildInitialPresetForm", () => {
-  it("leaves optional style presets empty and randomizes rarity for a draft figure", () => {
-    const randomValues = [0.9];
+  it("randomizes style presets and rarity for a draft figure", () => {
+    const randomValues = [0.1, 0.6, 0.9, 0.9];
     const form = buildInitialPresetForm(
       draftFigure,
       presets,
@@ -60,9 +60,9 @@ describe("buildInitialPresetForm", () => {
     );
 
     expect(form).toEqual({
-      selected_vibe: null,
-      selected_accessory: null,
-      selected_background: null,
+      selected_vibe: "cyberpunk",
+      selected_accessory: "coffee",
+      selected_background: "space",
       rarity: "Legendary",
     });
   });

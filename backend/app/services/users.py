@@ -1,8 +1,12 @@
+import logging
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.repositories.users import UsersRepository
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -20,26 +24,50 @@ class UserService:
             data["telegram_id"],
         )
         if user:
-            return await self.users_repository.update_from_telegram(
+            updated_user = await self.users_repository.update_from_telegram(
                 session,
                 user,
                 data,
             )
+            logger.info(
+                "telegram user updated user_id=%s telegram_id=%s has_photo=%s",
+                updated_user.id,
+                updated_user.telegram_id,
+                bool(updated_user.photo_url),
+            )
+            return updated_user
 
         try:
-            return await self.users_repository.create(session, data)
+            created_user = await self.users_repository.create(session, data)
+            logger.info(
+                "telegram user created user_id=%s telegram_id=%s has_photo=%s",
+                created_user.id,
+                created_user.telegram_id,
+                bool(created_user.photo_url),
+            )
+            return created_user
         except IntegrityError:
             await session.rollback()
+            logger.warning(
+                "telegram user create raced telegram_id=%s",
+                data["telegram_id"],
+            )
             user = await self.users_repository.get_by_telegram_id(
                 session,
                 data["telegram_id"],
             )
             if user:
-                return await self.users_repository.update_from_telegram(
+                updated_user = await self.users_repository.update_from_telegram(
                     session,
                     user,
                     data,
                 )
+                logger.info(
+                    "telegram user updated after race user_id=%s telegram_id=%s",
+                    updated_user.id,
+                    updated_user.telegram_id,
+                )
+                return updated_user
             raise
 
     def _normalize_telegram_user_data(self, telegram_user_data: dict) -> dict:

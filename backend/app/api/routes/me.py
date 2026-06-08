@@ -100,7 +100,10 @@ async def debug_my_telegram_photo(
             "status": "local_preview_user",
             "get_user_profile_photos": None,
             "get_file": None,
-            "message": "Local preview auth uses a fake Telegram user; profile photos are available only from a real Telegram Mini App session.",
+            "message": (
+                "Local preview auth uses a fake Telegram user; profile photos "
+                "are available only from a real Telegram Mini App session."
+            ),
         }
 
     try:

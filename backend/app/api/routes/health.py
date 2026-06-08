@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,6 +9,7 @@ from app.core.database import get_async_session
 
 router = APIRouter(tags=["health"])
 AsyncSessionDep = Annotated[AsyncSession, Depends(get_async_session)]
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
@@ -21,6 +23,7 @@ async def health_db(session: AsyncSessionDep) -> dict[str, str]:
         statement: Any = text("SELECT 1")
         await session.execute(statement)
     except Exception as exc:
+        logger.exception("database health check failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database health check failed",

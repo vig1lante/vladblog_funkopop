@@ -122,10 +122,16 @@ class FigureService:
         previous_signature = get_generation_input_signature(figure)
         await self.figures_repository.update_presets(session, figure, presets)
         self._apply_source_photo_choice(figure, user, presets.source_photo_type)
-        if get_generation_input_signature(figure) != previous_signature:
+        signature_changed = get_generation_input_signature(figure) != previous_signature
+        if signature_changed:
             self._clear_generation_result(figure)
-        if has_generation_presets(figure) or (
-            completes_style_preset_step(presets) and figure.source_photo_type
+        completes_style_step = (
+            completes_style_preset_step(presets)
+            and bool(figure.source_photo_type)
+        )
+        if (has_generation_presets(figure) or completes_style_step) and (
+            signature_changed
+            or completes_style_step
         ):
             figure.status = FigureStatus.READY_FOR_GENERATION.value
 

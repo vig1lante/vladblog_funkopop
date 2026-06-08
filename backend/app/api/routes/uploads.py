@@ -62,7 +62,10 @@ async def upload_figure_photo(
         photo_url,
     )
     if figure is None:
-        logger.warning("photo upload rejected user_id=%s reason=figure_not_found", current_user.id)
+        logger.warning(
+            "photo upload rejected user_id=%s reason=figure_not_found",
+            current_user.id,
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Figure not found",

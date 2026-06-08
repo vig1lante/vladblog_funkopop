@@ -12,9 +12,9 @@ export function buildInitialPresetForm(
 ): FigurePresetsUpdate {
   if (figure.status === "draft") {
     return {
-      selected_vibe: null,
-      selected_accessory: null,
-      selected_background: null,
+      selected_vibe: pickRandomOption(presets.vibes, random),
+      selected_accessory: pickRandomOption(presets.accessories, random),
+      selected_background: pickRandomOption(presets.backgrounds, random),
       rarity: pickRandomOption(presets.rarities, random),
     };
   }

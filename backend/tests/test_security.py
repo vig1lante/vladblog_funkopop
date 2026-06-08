@@ -2,11 +2,19 @@ from uuid import uuid4
 
 import pytest
 
+from app.core.config import settings
 from app.core.security import (
     InvalidTokenError,
     create_access_token,
     decode_access_token,
 )
+
+TEST_JWT_SECRET = "x" * 32
+
+
+@pytest.fixture(autouse=True)
+def _configure_test_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", TEST_JWT_SECRET)
 
 
 def test_create_and_decode_access_token() -> None:

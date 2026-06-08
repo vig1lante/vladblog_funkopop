@@ -1,7 +1,9 @@
+import json
 import struct
 import zlib
 from collections.abc import AsyncGenerator
 from io import BytesIO
+from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -21,10 +23,23 @@ from app.services import generation as generation_service
 from app.services.figures import has_generation_presets
 from tests.helpers import build_telegram_init_data
 
+TEST_BOT_TOKEN = "123456:test-token"
+TEST_JWT_SECRET = "x" * 32
+
 
 @pytest.fixture(autouse=True)
-def _run_generation_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+def _run_generation_inline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(settings, "GENERATION_ENABLED", True)
     monkeypatch.setattr(settings, "GENERATION_BACKGROUND_TASKS", False)
+    monkeypatch.setattr(
+        settings,
+        "GENERATION_AUDIT_LOG_PATH",
+        str(tmp_path / "logs" / "generation-audit.jsonl"),
+    )
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path / "media"))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "JWT_SECRET_KEY", TEST_JWT_SECRET)
+    monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", TEST_BOT_TOKEN)
 
 
 @pytest.fixture()
@@ -685,6 +700,44 @@ async def test_generate_figure_returns_existing_active_job(
 
 
 @pytest.mark.asyncio
+async def test_background_generation_marks_job_failed_on_unhandled_error(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+    figure_payload = client.get("/figures/me", headers=headers).json()
+    job_id = await make_active_generation_job(
+        session_maker,
+        figure_payload["id"],
+        figure_payload["user_id"],
+    )
+
+    async def fail_generation(
+        session: AsyncSession,
+        job_id: UUID,
+    ) -> GenerationJob:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(generation_service, "AsyncSessionLocal", session_maker)
+    monkeypatch.setattr(generation_service, "run_generation_job", fail_generation)
+
+    await generation_service.run_generation_job_background(UUID(job_id))
+
+    async with session_maker() as session:
+        job = await session.get(GenerationJob, UUID(job_id))
+        figure = await session.get(Figure, UUID(figure_payload["id"]))
+        assert job is not None
+        assert figure is not None
+        assert job.status == "failed"
+        assert job.error_code == "background_generation_failed"
+        assert job.error_message == "Generation failed unexpectedly"
+        assert figure.status == "failed"
+        assert figure.last_generation_error == "Generation failed unexpectedly"
+
+
+@pytest.mark.asyncio
 async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     client: TestClient,
     session_maker: async_sessionmaker[AsyncSession],
@@ -728,6 +781,68 @@ async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     assert refreshed.status_code == 200
     assert refreshed.json()["image_url"] == payload["job"]["result_image_url"]
     assert refreshed.json()["foil_image_url"] == payload["figure"]["foil_image_url"]
+
+
+@pytest.mark.asyncio
+async def test_generate_figure_writes_generation_audit_log(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    audit_log_path = tmp_path / "logs" / "generation-audit.jsonl"
+    monkeypatch.setattr(settings, "GENERATION_AUDIT_LOG_PATH", str(audit_log_path))
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path / "media"))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", "mock")
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    records = [
+        json.loads(line)
+        for line in audit_log_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert [record["event"] for record in records] == [
+        "generation_job_created",
+        "generation_completed",
+    ]
+    completed = records[-1]
+    assert completed["timestamp"].endswith("Z")
+    assert completed["user"] == {
+        "id": payload["figure"]["user_id"],
+        "telegram_id": 123456,
+        "username": "user123456",
+        "first_name": "Vlad",
+        "last_name": None,
+    }
+    assert completed["figure"]["id"] == payload["figure"]["id"]
+    assert completed["figure"]["display_number"] == "#0001"
+    assert completed["figure"]["rarity"] == payload["figure"]["rarity"]
+    assert completed["figure"]["foil_rarity"] == payload["figure"]["foil_rarity"]
+    assert completed["figure"]["selected_vibe"] == "cyberpunk"
+    assert completed["figure"]["selected_accessory"] == "laptop"
+    assert completed["figure"]["selected_background"] == "neon_server_room"
+    assert completed["figure"]["source_photo_type"] == "none"
+    assert completed["job"]["id"] == payload["job"]["id"]
+    assert completed["job"]["status"] == "completed"
+    assert completed["job"]["mode"] == "mock"
+    assert completed["job"]["model"] == "mock"
+    assert completed["job"]["attempt"] == 1
+    assert completed["generation"]["prompt"] == payload["job"]["prompt"]
+    assert completed["generation"]["foil_prompt"] == payload["job"]["foil_prompt"]
+    assert (
+        completed["generation"]["result_image_url"]
+        == payload["job"]["result_image_url"]
+    )
+    assert (
+        completed["generation"]["foil_result_image_url"]
+        == payload["job"]["foil_result_image_url"]
+    )
+    assert completed["generation"]["error_code"] is None
+    assert completed["generation"]["error_message"] is None
 
 
 def test_generate_figure_mock_mode_is_case_insensitive_and_never_uses_openai(
@@ -837,6 +952,36 @@ def test_download_my_figure_card_returns_final_png(
     assert public_foil_response.content.startswith(b"\x89PNG\r\n\x1a\n")
 
 
+def test_download_public_figure_card_hides_private_figure(
+    client: TestClient,
+    tmp_path: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
+    monkeypatch.setattr(settings, "GENERATION_MODE", "mock")
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+    generated_payload = client.post("/figures/me/generate", headers=headers).json()
+    figure_id = generated_payload["figure"]["id"]
+
+    privacy_response = client.patch(
+        "/figures/me/presets",
+        headers=headers,
+        json={"is_public": False},
+    )
+
+    assert privacy_response.status_code == 200
+    assert privacy_response.json()["is_public"] is False
+    owner_response = client.get("/figures/me/card.png", headers=headers)
+    public_response = client.get(f"/figures/{figure_id}/card.png")
+    public_foil_response = client.get(f"/figures/{figure_id}/card.png?variant=foil")
+    assert owner_response.status_code == 200
+    assert public_response.status_code == 404
+    assert public_response.json() == {"detail": "Figure not found"}
+    assert public_foil_response.status_code == 404
+
+
 def test_download_my_figure_card_requires_completed_image(
     client: TestClient,
 ) -> None:
@@ -847,6 +992,30 @@ def test_download_my_figure_card_requires_completed_image(
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Figure image is not ready"}
+
+
+@pytest.mark.asyncio
+async def test_generate_figure_rejects_after_attempt_limit(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "OPENAI_IMAGE_MAX_ATTEMPTS", 2)
+    headers = auth_headers(client)
+    make_ready_figure(client, headers)
+    figure_payload = client.get("/figures/me", headers=headers).json()
+    async with session_maker() as session:
+        figure = await session.get(Figure, UUID(figure_payload["id"]))
+        assert figure is not None
+        figure.status = FigureStatus.FAILED.value
+        figure.generation_attempts = 2
+        await session.commit()
+
+    response = client.post("/figures/me/generate", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Generation attempt limit reached"}
+    assert await count_generation_jobs(session_maker) == 0
 
 
 def test_generate_figure_openai_requires_api_key(

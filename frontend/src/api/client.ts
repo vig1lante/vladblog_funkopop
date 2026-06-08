@@ -1,3 +1,5 @@
+import { clientLogger } from "../lib/logger";
+
 export type HealthResponse = {
   status: string;
 };
@@ -125,15 +127,13 @@ export async function apiRequest<T>(
     if (response.status === 401 && options.withAuth !== false) {
       clearAccessToken();
     }
-    if (import.meta.env.DEV) {
-      console.warn("API request failed", {
-        path,
-        method: options.method ?? "GET",
-        status: response.status,
-        requestId,
-        data,
-      });
-    }
+    clientLogger.warn("API request failed", {
+      path,
+      method: options.method ?? "GET",
+      status: response.status,
+      requestId,
+    });
+    clientLogger.debug("API error payload", { path, requestId, data });
     throw new ApiError(
       getErrorMessage(data, response.status),
       response.status,

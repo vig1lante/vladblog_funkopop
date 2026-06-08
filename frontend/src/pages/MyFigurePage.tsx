@@ -15,6 +15,7 @@ import {
   getTelegramProfileUrl,
   getTelegramUsernameLabel,
 } from "../lib/telegramUsername";
+import { clientLogger } from "../lib/logger";
 import { requestTelegramDownload } from "../lib/telegramDownload";
 import { type Figure } from "../types/figure";
 
@@ -111,9 +112,11 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
         isDownloading: false,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Failed to download figure card", error);
-      }
+      clientLogger.error(
+        "Failed to download figure card",
+        { figureId: figure.id, variant: downloadVariant },
+        error,
+      );
       setVariantDownloadStatus(downloadVariant, {
         isComplete: false,
         isDownloading: false,

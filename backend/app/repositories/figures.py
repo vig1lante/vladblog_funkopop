@@ -108,15 +108,5 @@ class FiguresRepository:
         if presets.is_public is not None:
             figure.is_public = presets.is_public
 
-        if all(
-            [
-                figure.selected_vibe,
-                figure.selected_accessory,
-                figure.selected_background,
-                figure.source_photo_type,
-            ]
-        ):
-            figure.status = FigureStatus.READY_FOR_GENERATION.value
-
         session.add(figure)
         return figure

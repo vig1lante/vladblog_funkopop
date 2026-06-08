@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import is_placeholder_telegram_bot_token, settings
 from app.core.database import get_async_session
 from app.core.security import create_access_token
 from app.core.telegram_auth import TelegramAuthError, validate_telegram_init_data
@@ -21,6 +21,13 @@ async def auth_telegram(
     payload: TelegramAuthRequest,
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> AuthResponse:
+    if is_placeholder_telegram_bot_token(settings.TELEGRAM_BOT_TOKEN):
+        logger.error("telegram auth rejected reason=bot_token_not_configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Telegram auth is not configured",
+        )
+
     try:
         telegram_user_data = validate_telegram_init_data(
             payload.init_data,
@@ -39,7 +46,8 @@ async def auth_telegram(
     )
     figure = await FigureService().get_my_figure(session, user)
     logger.info(
-        "telegram auth ok user_id=%s telegram_id=%s has_photo=%s figure_id=%s figure_status=%s",
+        "telegram auth ok user_id=%s telegram_id=%s has_photo=%s "
+        "figure_id=%s figure_status=%s",
         user.id,
         user.telegram_id,
         bool(user.photo_url),
@@ -57,7 +65,7 @@ async def auth_telegram(
 async def auth_dev(
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> AuthResponse:
-    if settings.APP_ENV != "local":
+    if settings.APP_ENV != "local" or not settings.DEV_AUTH_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
