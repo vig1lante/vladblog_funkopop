@@ -17,7 +17,12 @@ interface Window {
         ) => void,
       ) => void;
       openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+      disableVerticalSwipes?: () => void;
+      expand?: () => void;
+      isFullscreen?: boolean;
+      requestFullscreen?: () => void | Promise<void>;
       ready?: () => void;
+      version?: string;
     };
   };
 }

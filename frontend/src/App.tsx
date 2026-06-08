@@ -6,6 +6,7 @@ import { generateMyFigure } from "./api/generation";
 import { createMyFigure, getMyFigure } from "./api/figures";
 import { getFlowStep } from "./lib/flow";
 import { clientLogger } from "./lib/logger";
+import { prepareTelegramViewport } from "./lib/telegramViewport";
 import { GenerationReadyPage } from "./pages/GenerationReadyPage";
 import { GenerationWaitingPage } from "./pages/GenerationWaitingPage";
 import { MyFigurePage } from "./pages/MyFigurePage";
@@ -38,7 +39,7 @@ export default function App() {
 
   useEffect(() => {
     const webApp = window.Telegram?.WebApp;
-    webApp?.ready?.();
+    prepareTelegramViewport(webApp);
 
     const initData = webApp?.initData;
     if (!initData) {

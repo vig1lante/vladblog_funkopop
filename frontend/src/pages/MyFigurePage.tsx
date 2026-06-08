@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { FigureCard } from "../components/FigureCard";
+import { FigureMotionCard } from "../components/FigureMotionCard";
 import { type UserResponse } from "../api/auth";
 import {
   downloadMyFigureCard,
@@ -15,6 +16,7 @@ import {
   getTelegramProfileUrl,
   getTelegramUsernameLabel,
 } from "../lib/telegramUsername";
+import { getApprovedRarityStyle } from "../lib/approvedRarityStyles";
 import { clientLogger } from "../lib/logger";
 import { requestTelegramDownload } from "../lib/telegramDownload";
 import { type Figure } from "../types/figure";
@@ -53,6 +55,8 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
   const foilFigure = getFoilFigure(figure);
   const displayedVariant = showFoilVersion && foilFigure ? "foil" : "normal";
   const displayedFigure = showFoilVersion && foilFigure ? foilFigure : figure;
+  const displayedRarityStyle = getApprovedRarityStyle(displayedFigure.rarity);
+  const displayedIsFoilRarity = displayedRarityStyle.power.startsWith("foil");
   const currentDownloadStatus = downloadStatusByVariant[displayedVariant];
   const isDownloading = currentDownloadStatus.isDownloading;
   const isDownloadComplete = currentDownloadStatus.isComplete;
@@ -148,12 +152,19 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
         <p className="brand-line">VLADBLOG COLLECTIBLES</p>
         <h1>Фигурка готова</h1>
         <div className="figure-result-card">
-          <FigureCard
-            key={`${displayedFigure.rarity}-${displayedFigure.image_url ?? ""}`}
-            figure={displayedFigure}
-            modelProfileUrl={modelProfileUrl}
-            modelUsername={modelUsername}
-          />
+          <FigureMotionCard
+            accent={displayedRarityStyle.accent}
+            accent2={displayedRarityStyle.accent2}
+            glow={displayedRarityStyle.glow}
+            isFoil={displayedIsFoilRarity}
+          >
+            <FigureCard
+              key={`${displayedFigure.rarity}-${displayedFigure.image_url ?? ""}`}
+              figure={displayedFigure}
+              modelProfileUrl={modelProfileUrl}
+              modelUsername={modelUsername}
+            />
+          </FigureMotionCard>
         </div>
         {foilFigure && (
           <label className="foil-version-toggle">

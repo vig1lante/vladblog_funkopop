@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -32,6 +32,13 @@ const figureCard = readFileSync(
   resolve(import.meta.dirname, "components/FigureCard.tsx"),
   "utf8",
 );
+const figureMotionCardPath = resolve(
+  import.meta.dirname,
+  "components/FigureMotionCard.tsx",
+);
+const figureMotionCard = existsSync(figureMotionCardPath)
+  ? readFileSync(figureMotionCardPath, "utf8")
+  : "";
 const rarityBadge = readFileSync(
   resolve(import.meta.dirname, "components/RarityBadge.tsx"),
   "utf8",
@@ -46,6 +53,13 @@ const approvedRarityStyles = readFileSync(
   resolve(import.meta.dirname, "lib/approvedRarityStyles.ts"),
   "utf8",
 );
+const telegramViewportPath = resolve(
+  import.meta.dirname,
+  "lib/telegramViewport.ts",
+);
+const telegramViewport = existsSync(telegramViewportPath)
+  ? readFileSync(telegramViewportPath, "utf8")
+  : "";
 
 describe("frontend styles", () => {
   it("does not use global loading cursors", () => {
@@ -255,6 +269,27 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".rarity-style-token");
     expect(figureCard).toContain("const isFoilRarity");
     expect(figureCard).toContain("figure-foil-underlay");
+    expect(myFigurePage).toContain("FigureMotionCard");
+    expect(myFigurePage).toContain("<FigureMotionCard");
+    expect(myFigurePage).toContain("isFoil={displayedIsFoilRarity}");
+    expect(myFigurePage).toContain("const displayedRarityStyle = getApprovedRarityStyle(displayedFigure.rarity)");
+    expect(myFigurePage).toContain('displayedRarityStyle.power.startsWith("foil")');
+    expect(figureMotionCard).toContain("export function FigureMotionCard");
+    expect(figureMotionCard).toContain("requestAnimationFrame");
+    expect(figureMotionCard).toContain("setPointerCapture");
+    expect(figureMotionCard).toContain("onPointerCancel");
+    expect(figureMotionCard).toContain('className={`figure-motion-card ${isFoil ? "figure-motion-foil" : "figure-motion-normal"}');
+    expect(styles).toContain(".figure-motion-card");
+    expect(styles).toContain(".figure-motion-normal");
+    expect(styles).toContain(".figure-motion-foil");
+    expect(styles).toContain(".figure-motion-prism");
+    expect(styles).toContain(".figure-motion-glare");
+    expect(styles).toContain(".figure-motion-shadow");
+    expect(styles).toContain("--motion-rotate-x");
+    expect(styles).toContain("--motion-angle");
+    expect(styles).toContain("figureMotionPrismSweep");
+    expect(styles).toContain(".figure-motion-normal .figure-motion-prism");
+    expect(styles).toContain(".figure-motion-foil .figure-motion-prism");
     expect(figureCard).toContain('aria-hidden="true"');
     expect(styles).toContain(".figure-foil-underlay");
     expect(styles).toContain(".rarity-power-foil .figure-foil-underlay");
@@ -322,6 +357,10 @@ describe("frontend styles", () => {
       '--foil-card-palette',
       '.foil-rarity-preview',
       '.figure-result-card',
+      '.figure-motion-card',
+      '.figure-motion-foil',
+      '.figure-motion-normal',
+      '.figure-motion-prism',
       'margin-inline: auto',
       'epicBadgeAura',
       'mythicBadgeEmber',
@@ -329,6 +368,7 @@ describe("frontend styles", () => {
       'founderTokenSeal',
       'foilSparkle',
       'foilGlow',
+      'figureMotionPrismSweep',
     ]) {
       expect(styles).toContain(token);
     }
@@ -356,6 +396,38 @@ describe("frontend styles", () => {
     expect(app).not.toContain("<FoilRarityPreview />");
     expect(welcomePage).not.toContain("FoilRarityPreview");
     expect(welcomePage).not.toContain("<FoilRarityPreview />");
+  });
+
+  it("asks Telegram for fullscreen viewport on app startup", () => {
+    expect(app).toContain("prepareTelegramViewport(webApp)");
+    expect(telegramViewport).toContain("export function prepareTelegramViewport");
+    expect(telegramViewport).toContain("webApp.requestFullscreen?.()");
+    expect(telegramViewport).toContain("webApp.expand?.()");
+    expect(telegramViewport).toContain("webApp.disableVerticalSwipes?.()");
+    expect(telegramViewport).toContain("webApp.ready?.()");
+    expect(telegramViewport).toContain("isTelegramVersionAtLeast(webApp.version, 7, 7)");
+    expect(telegramViewport).toContain("isTelegramVersionAtLeast(webApp.version, 8, 0)");
+  });
+
+  it("prevents page scrolling while the final motion card is being inspected", () => {
+    expect(figureMotionCard).toContain("handleTouchMove");
+    expect(figureMotionCard).toContain("onTouchMove={handleTouchMove}");
+    expect(figureMotionCard).toContain("event.preventDefault()");
+    expect(figureMotionCard).toContain("event.stopPropagation()");
+    expect(styles).toContain("overscroll-behavior: contain");
+    expect(styles).toContain("touch-action: none");
+  });
+
+  it("keeps final card motion layers locked together without diagonal foil stripes", () => {
+    expect(styles).not.toContain("repeating-linear-gradient(");
+    expect(styles).not.toContain("translateZ(30px)");
+    expect(styles).not.toContain("translateZ(48px)");
+    expect(styles).not.toContain("translateZ(56px)");
+    expect(styles).not.toContain("translateZ(62px)");
+    expect(styles).not.toContain("translateZ(64px)");
+    expect(styles).not.toContain("translate3d(var(--motion-prism-x)");
+    expect(figureMotionCard).not.toContain("--motion-prism-x");
+    expect(figureMotionCard).not.toContain("--motion-prism-y");
   });
 
   it("shows the model name and high-contrast attribute labels on the final card", () => {
