@@ -42,3 +42,11 @@ def test_attribute_layout_stacks_rows_with_room_for_long_values() -> None:
 def test_preset_label_uses_expanded_catalog_labels() -> None:
     assert share_cards._preset_label("software_engineer") == "Разработчик"
     assert share_cards._preset_label("startup_office") == "Стартап-офис"
+
+
+def test_founder_legendary_share_card_uses_cosmic_blue_palette() -> None:
+    assert share_cards.RARITY_COLORS["Founder Legendary"] == ("#1d4ed8", "#020a3a")
+    assert share_cards.RARITY_COLORS["Foil Founder Legendary"] == (
+        "#1d4ed8",
+        "#020a3a",
+    )

@@ -31,11 +31,11 @@ RARITY_COLORS = {
     "Epic": ("#e9d5ff", "#8b5cf6"),
     "Mythic": ("#ffe4e6", "#e11d48"),
     "Legendary": ("#fde68a", "#f59e0b"),
-    "Founder Legendary": ("#f8d56a", "#7a5600"),
+    "Founder Legendary": ("#1d4ed8", "#020a3a"),
     "Foil Epic": ("#f1d8ff", "#8b5cf6"),
     "Foil Mythic": ("#ffe4e6", "#e11d48"),
     "Foil Legendary": ("#fde68a", "#f59e0b"),
-    "Foil Founder Legendary": ("#f8d56a", "#7a5600"),
+    "Foil Founder Legendary": ("#1d4ed8", "#020a3a"),
 }
 
 FONT_CANDIDATES = (

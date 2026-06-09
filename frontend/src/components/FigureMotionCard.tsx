@@ -11,15 +11,31 @@ type FigureMotionCardProps = {
   accent: string;
   accent2: string;
   children: ReactNode;
+  foilFrame: string;
+  foilHue: number;
+  foilTextureUrl: string | null;
+  foilTintOpacity: number;
   glow: string;
   isFoil: boolean;
 };
 
 type PendingMotion = {
   element: HTMLDivElement;
+  height: number;
   normalizedX: number;
   normalizedY: number;
+  width: number;
+  updateTexture: boolean;
 };
+
+type MotionBounds = {
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+};
+
+const TEXTURE_UPDATE_INTERVAL_MS = 120;
 
 const motionVariableNames = [
   "--motion-rotate-x",
@@ -29,22 +45,35 @@ const motionVariableNames = [
   "--motion-pointer-x",
   "--motion-pointer-y",
   "--motion-angle",
+  "--motion-texture-x",
+  "--motion-texture-y",
+  "--motion-texture-scale",
 ] as const;
 
 export function FigureMotionCard({
   accent,
   accent2,
   children,
+  foilFrame,
+  foilHue,
+  foilTextureUrl,
+  foilTintOpacity,
   glow,
   isFoil,
 }: FigureMotionCardProps) {
   const frameRef = useRef<number | null>(null);
+  const lastTextureUpdateAtRef = useRef(0);
+  const motionBoundsRef = useRef<MotionBounds | null>(null);
   const pendingMotionRef = useRef<PendingMotion | null>(null);
   const motionStyle = {
     "--motion-accent": accent,
     "--motion-accent-2": accent2,
+    "--motion-foil-frame": foilFrame,
+    "--motion-foil-hue": `${foilHue}deg`,
+    "--motion-tint-opacity": foilTintOpacity,
     "--motion-glow": glow,
   } as CSSProperties;
+  const shouldShowFoilTexture = isFoil && Boolean(foilTextureUrl);
 
   useEffect(() => {
     return () => {
@@ -61,21 +90,32 @@ export function FigureMotionCard({
     }
 
     const element = event.currentTarget;
-    const rect = element.getBoundingClientRect();
-    const normalizedX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const normalizedY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    const bounds = readMotionBounds(element);
+    const normalizedX = clamp(
+      (event.clientX - bounds.left) / bounds.width,
+      0,
+      1,
+    );
+    const normalizedY = clamp(
+      (event.clientY - bounds.top) / bounds.height,
+      0,
+      1,
+    );
 
     pendingMotionRef.current = {
       element,
+      height: bounds.height,
       normalizedX,
       normalizedY,
+      width: bounds.width,
+      updateTexture: false,
     };
 
     if (frameRef.current !== null) {
       return;
     }
 
-    frameRef.current = window.requestAnimationFrame(() => {
+    frameRef.current = window.requestAnimationFrame((timestamp) => {
       frameRef.current = null;
       const pendingMotion = pendingMotionRef.current;
 
@@ -83,7 +123,22 @@ export function FigureMotionCard({
         return;
       }
 
-      applyMotion(pendingMotion, isFoil);
+      const shouldUpdateTexture =
+        lastTextureUpdateAtRef.current === 0 ||
+        timestamp - lastTextureUpdateAtRef.current >=
+          TEXTURE_UPDATE_INTERVAL_MS;
+
+      if (shouldUpdateTexture) {
+        lastTextureUpdateAtRef.current = timestamp;
+      }
+
+      applyMotion(
+        {
+          ...pendingMotion,
+          updateTexture: shouldUpdateTexture,
+        },
+        isFoil,
+      );
     });
   }
 
@@ -95,11 +150,14 @@ export function FigureMotionCard({
 
     event.currentTarget.classList.add("is-motion-active");
     event.currentTarget.setPointerCapture(event.pointerId);
+    motionBoundsRef.current = null;
     scheduleMotion(event);
   }
 
   function handlePointerReset(event: PointerEvent<HTMLDivElement>) {
     pendingMotionRef.current = null;
+    lastTextureUpdateAtRef.current = 0;
+    motionBoundsRef.current = null;
     if (frameRef.current !== null) {
       window.cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
@@ -110,6 +168,22 @@ export function FigureMotionCard({
   function handleTouchMove(event: TouchEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
+  }
+
+  function readMotionBounds(element: HTMLDivElement): MotionBounds {
+    if (motionBoundsRef.current) {
+      return motionBoundsRef.current;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const bounds = {
+      height: Math.max(rect.height, 1),
+      left: rect.left,
+      top: rect.top,
+      width: Math.max(rect.width, 1),
+    };
+    motionBoundsRef.current = bounds;
+    return bounds;
   }
 
   return (
@@ -126,8 +200,21 @@ export function FigureMotionCard({
       <div className="figure-motion-shadow" aria-hidden="true" />
       <div className="figure-motion-surface">
         {children}
-        <span className="figure-motion-prism" aria-hidden="true" />
-        <span className="figure-motion-glare" aria-hidden="true" />
+        {isFoil && (
+          <span className="figure-motion-foil-effects" aria-hidden="true">
+            {shouldShowFoilTexture && (
+              <span className="figure-motion-foil-texture">
+                <img src={foilTextureUrl ?? ""} alt="" />
+              </span>
+            )}
+            <span className="figure-motion-rarity-tint" />
+            <span className="figure-motion-glare" />
+            <span className="figure-motion-prism" />
+          </span>
+        )}
+        {!isFoil && (
+          <span className="figure-motion-glare" aria-hidden="true" />
+        )}
         <span className="figure-motion-edge" aria-hidden="true" />
       </div>
     </div>
@@ -135,13 +222,16 @@ export function FigureMotionCard({
 }
 
 function applyMotion(
-  { element, normalizedX, normalizedY }: PendingMotion,
+  { element, height, normalizedX, normalizedY, updateTexture, width }: PendingMotion,
   isFoil: boolean,
 ) {
   const axisX = normalizedX * 2 - 1;
   const axisY = normalizedY * 2 - 1;
   const tilt = isFoil ? 16 : 11;
   const shift = isFoil ? 8 : 3;
+  const distance = Math.hypot(axisX, axisY);
+  const logDistance = Math.log1p(distance * 10);
+  const textureRange = clamp(width / 340, 0.84, 1.36);
 
   element.style.setProperty(
     "--motion-rotate-x",
@@ -159,18 +249,36 @@ function applyMotion(
     "--motion-translate-y",
     `${(axisY * shift).toFixed(2)}px`,
   );
-  element.style.setProperty(
-    "--motion-pointer-x",
-    `${(normalizedX * 100).toFixed(1)}%`,
-  );
-  element.style.setProperty(
-    "--motion-pointer-y",
-    `${(normalizedY * 100).toFixed(1)}%`,
-  );
-  element.style.setProperty(
-    "--motion-angle",
-    `${(115 + axisX * 90).toFixed(1)}deg`,
-  );
+
+  if (isFoil) {
+    element.style.setProperty(
+      "--motion-texture-x",
+      `${(axisX * 70 * textureRange).toFixed(2)}px`,
+    );
+    element.style.setProperty(
+      "--motion-texture-y",
+      `${(axisY * 110 * textureRange * clamp(height / 500, 0.82, 1.2)).toFixed(2)}px`,
+    );
+    element.style.setProperty(
+      "--motion-texture-scale",
+      `${(1 + logDistance / 10).toFixed(3)}`,
+    );
+  }
+
+  if (updateTexture) {
+    element.style.setProperty(
+      "--motion-pointer-x",
+      `${(normalizedX * 100).toFixed(1)}%`,
+    );
+    element.style.setProperty(
+      "--motion-pointer-y",
+      `${(normalizedY * 100).toFixed(1)}%`,
+    );
+    element.style.setProperty(
+      "--motion-angle",
+      `${(115 + axisX * 90).toFixed(1)}deg`,
+    );
+  }
 }
 
 function resetMotion(element: HTMLDivElement) {

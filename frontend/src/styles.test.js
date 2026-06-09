@@ -53,6 +53,7 @@ const approvedRarityStyles = readFileSync(
   resolve(import.meta.dirname, "lib/approvedRarityStyles.ts"),
   "utf8",
 );
+const frontendRoot = resolve(import.meta.dirname, "..");
 const telegramViewportPath = resolve(
   import.meta.dirname,
   "lib/telegramViewport.ts",
@@ -267,34 +268,56 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".final-rarity-style-grid");
     expect(styles).not.toContain(".rarity-style-card");
     expect(styles).not.toContain(".rarity-style-token");
-    expect(figureCard).toContain("const isFoilRarity");
-    expect(figureCard).toContain("figure-foil-underlay");
+    expect(figureCard).not.toContain("const isFoilRarity");
+    expect(figureCard).not.toContain("figure-foil-underlay");
     expect(myFigurePage).toContain("FigureMotionCard");
     expect(myFigurePage).toContain("<FigureMotionCard");
     expect(myFigurePage).toContain("isFoil={displayedIsFoilRarity}");
+    expect(myFigurePage).toContain("foilTextureUrl={displayedRarityStyle.foilTextureUrl");
+    expect(myFigurePage).toContain("foilHue={displayedRarityStyle.foilHue");
+    expect(myFigurePage).toContain("foilTintOpacity={displayedRarityStyle.foilTintOpacity");
     expect(myFigurePage).toContain("const displayedRarityStyle = getApprovedRarityStyle(displayedFigure.rarity)");
     expect(myFigurePage).toContain('displayedRarityStyle.power.startsWith("foil")');
     expect(figureMotionCard).toContain("export function FigureMotionCard");
+    expect(figureMotionCard).toContain("foilTextureUrl");
+    expect(figureMotionCard).toContain("foilHue");
+    expect(figureMotionCard).toContain("foilTintOpacity");
     expect(figureMotionCard).toContain("requestAnimationFrame");
     expect(figureMotionCard).toContain("setPointerCapture");
     expect(figureMotionCard).toContain("onPointerCancel");
     expect(figureMotionCard).toContain('className={`figure-motion-card ${isFoil ? "figure-motion-foil" : "figure-motion-normal"}');
+    expect(figureMotionCard).toContain("figure-motion-foil-effects");
+    expect(figureMotionCard).toContain("figure-motion-foil-texture");
+    expect(figureMotionCard).toContain("figure-motion-rarity-tint");
+    expect(figureMotionCard).toContain("--motion-texture-x");
+    expect(figureMotionCard).toContain("--motion-texture-y");
+    expect(figureMotionCard).toContain("--motion-texture-scale");
     expect(styles).toContain(".figure-motion-card");
     expect(styles).toContain(".figure-motion-normal");
     expect(styles).toContain(".figure-motion-foil");
+    expect(styles).toContain(".figure-motion-foil-effects");
+    expect(styles).toContain(".figure-motion-foil-texture");
+    expect(styles).toContain(".figure-motion-rarity-tint");
     expect(styles).toContain(".figure-motion-prism");
     expect(styles).toContain(".figure-motion-glare");
     expect(styles).toContain(".figure-motion-shadow");
     expect(styles).toContain("--motion-rotate-x");
     expect(styles).toContain("--motion-angle");
+    expect(styles).toContain("--motion-card-scale");
+    expect(styles).toContain("--motion-texture-x");
+    expect(styles).toContain("--motion-texture-y");
+    expect(styles).toContain("--motion-texture-scale");
+    expect(styles).toContain("--motion-foil-hue");
     expect(styles).toContain("figureMotionPrismSweep");
-    expect(styles).toContain(".figure-motion-normal .figure-motion-prism");
+    expect(styles).not.toContain(".figure-motion-normal .figure-motion-prism");
     expect(styles).toContain(".figure-motion-foil .figure-motion-prism");
-    expect(figureCard).toContain('aria-hidden="true"');
-    expect(styles).toContain(".figure-foil-underlay");
-    expect(styles).toContain(".rarity-power-foil .figure-foil-underlay");
-    expect(styles).toContain("mix-blend-mode: screen");
-    expect(styles).toContain("filter: saturate(2) contrast(1.12) blur(2.5px)");
+    expect(figureMotionCard).toContain('aria-hidden="true"');
+    expect(styles).not.toContain(".figure-foil-underlay");
+    expect(styles).toContain("mix-blend-mode: overlay");
+    expect(styles).toContain("mix-blend-mode: color");
+    expect(styles).toContain("filter: grayscale(0) saturate(4) hue-rotate(var(--motion-foil-hue, 0deg))");
+    expect(styles).toContain("object-fit: cover");
+    expect(styles).toContain("scale3d(var(--motion-texture-scale, 1), var(--motion-texture-scale, 1), 1)");
 
     for (const token of [
       'approvedEpicStyle',
@@ -312,16 +335,22 @@ describe("frontend styles", () => {
       'approvedFounderLegendaryStyle',
       'selectedIndex: 5',
       'name: "Legacy Frame"',
+      'accent: "#1d4ed8"',
+      'accent2: "#020a3a"',
       'approvedFoilStyle',
       'name: "Holographic"',
       'approvedFoilEpicStyle',
       'name: "Foil Arc Chip"',
+      'foilTextureUrl: "/foil_effects/1.PNG"',
       'approvedFoilMythicStyle',
       'name: "Foil Blood Plasma"',
+      'foilTextureUrl: "/foil_effects/2.PNG"',
       'approvedFoilLegendaryStyle',
       'name: "Foil Sun Relic"',
+      'foilTextureUrl: "/foil_effects/3.PNG"',
       'approvedFoilFounderLegendaryStyle',
       'name: "Foil Legacy Frame"',
+      'foilTextureUrl: "/foil_effects/1.PNG"',
       'finalRarityStyles',
       'getApprovedRarityStyle',
     ]) {
@@ -361,6 +390,8 @@ describe("frontend styles", () => {
       '.figure-motion-foil',
       '.figure-motion-normal',
       '.figure-motion-prism',
+      '.figure-motion-foil-texture',
+      '.figure-motion-rarity-tint',
       'margin-inline: auto',
       'epicBadgeAura',
       'mythicBadgeEmber',
@@ -389,6 +420,67 @@ describe("frontend styles", () => {
     expect(rarityBadge).toContain('rawKey === "rare" ? "epic"');
     expect(approvedRarityStyles).toContain('name: "Holographic"');
     expect(approvedRarityStyles).toContain('approved: true');
+  });
+
+  it("bundles the three approved foil texture PNGs for the frontend", () => {
+    for (const fileName of ["1.PNG", "2.PNG", "3.PNG"]) {
+      expect(
+        existsSync(resolve(frontendRoot, "public", "foil_effects", fileName)),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps approved foil rarity palettes distinct", () => {
+    for (const token of [
+      'approvedFoilEpicStyle',
+      'accent: "#8b5cf6"',
+      'accent2: "#f472ff"',
+      "foilHue: 284",
+      'approvedFoilMythicStyle',
+      'accent: "#ef2d2d"',
+      'accent2: "#ff7a2f"',
+      "foilHue: 348",
+      'approvedFoilLegendaryStyle',
+      'accent: "#d4af37"',
+      'accent2: "#ffe68a"',
+      "foilHue: 54",
+      'approvedFoilFounderLegendaryStyle',
+      'accent: "#1d4ed8"',
+      'accent2: "#020a3a"',
+      "foilHue: 222",
+    ]) {
+      expect(approvedRarityStyles).toContain(token);
+    }
+
+    for (const token of [
+      ".rarity-power-foil-epic",
+      "rgba(139, 92, 246, 0.48)",
+      ".rarity-power-foil-mythic",
+      "rgba(239, 45, 45, 0.5)",
+      ".rarity-power-foil-legendary",
+      "rgba(212, 175, 55, 0.46)",
+      ".rarity-power-foil-founder",
+      "rgba(29, 78, 216, 0.62)",
+    ]) {
+      expect(styles).toContain(token);
+    }
+  });
+
+  it("uses the cosmic blue Founder Legendary palette", () => {
+    for (const token of [
+      'accent: "#1d4ed8"',
+      'accent2: "#020a3a"',
+      'glow: "rgba(29, 78, 216, 0.52)"',
+      'foilFrame: "rgba(29, 78, 216, 0)"',
+      "#1d4ed8",
+      "#0b1f7a",
+      "#020a3a",
+      "#010414",
+      "rgba(29, 78, 216, 0.62)",
+    ]) {
+      expect(`${approvedRarityStyles}\n${styles}`).toContain(token);
+    }
+    expect(`${approvedRarityStyles}\n${styles}`).not.toContain("#38bdf8");
   });
 
   it("keeps rarities off the first auth screen", () => {
@@ -428,6 +520,72 @@ describe("frontend styles", () => {
     expect(styles).not.toContain("translate3d(var(--motion-prism-x)");
     expect(figureMotionCard).not.toContain("--motion-prism-x");
     expect(figureMotionCard).not.toContain("--motion-prism-y");
+  });
+
+  it("keeps the final foil texture translucent so the figure remains visible", () => {
+    const foilTextureRule = styles.match(
+      /\.figure-motion-foil \.figure-motion-foil-texture\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const opacity = Number(
+      foilTextureRule.match(/opacity:\s*([0-9.]+)/)?.[1] ?? "NaN",
+    );
+
+    expect(foilTextureRule).not.toContain("opacity: 1");
+    expect(opacity).toBeGreaterThan(0);
+    expect(opacity).toBeLessThanOrEqual(0.38);
+  });
+
+  it("clips foil texture corners and fades foil overlays away from card details with one mask", () => {
+    const foilTextureBaseRule = styles.match(
+      /\.figure-motion-foil-texture\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilEffectsMaskRule = styles.match(
+      /\.figure-motion-foil-effects\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+
+    expect(figureMotionCard).toContain("figure-motion-foil-effects");
+    expect(foilTextureBaseRule).toContain("clip-path: inset(0 round 24px)");
+    expect(foilTextureBaseRule).toContain("contain: paint");
+    expect(styles).toContain("--motion-foil-readable-mask");
+    expect(foilEffectsMaskRule).toContain("-webkit-mask-image: var(--motion-foil-readable-mask)");
+    expect(foilEffectsMaskRule).toContain("mask-image: var(--motion-foil-readable-mask)");
+    expect(styles).not.toContain(".figure-motion-foil .figure-motion-foil-texture,");
+  });
+
+  it("does not mount hidden prism and foil-only paint layers on normal final cards", () => {
+    expect(figureMotionCard).toContain("{isFoil && (");
+    expect(figureMotionCard).not.toContain(
+      '<span className="figure-motion-prism" aria-hidden="true" />',
+    );
+    expect(figureMotionCard).not.toContain(
+      '<span className="figure-motion-rarity-tint" aria-hidden="true" />',
+    );
+    expect(styles).not.toContain(".figure-motion-normal .figure-motion-prism");
+  });
+
+  it("keeps final card pointer motion from repainting foil gradients every frame", () => {
+    expect(figureMotionCard).toContain("TEXTURE_UPDATE_INTERVAL_MS");
+    expect(figureMotionCard).toContain("lastTextureUpdateAtRef");
+    expect(figureMotionCard).toContain("shouldUpdateTexture");
+    expect(figureMotionCard).toContain("updateTexture: shouldUpdateTexture");
+    expect(figureMotionCard).not.toContain('element.style.setProperty(\n    "--motion-card-scale"');
+    expect(figureMotionCard).not.toContain('element.style.setProperty(\n      "--motion-foil-hue"');
+    expect(figureMotionCard).not.toContain('"--motion-foil-hue",');
+    expect(styles).not.toContain("will-change: transform, filter");
+  });
+
+  it("pauses decorative foil sweeps while the final card is actively dragged", () => {
+    const activeMotionRule = styles.match(
+      /\.figure-motion-card\.is-motion-active \.figure-rarity-card::before,[\s\S]*?\.figure-motion-card\.is-motion-active \.figure-motion-prism\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+
+    expect(activeMotionRule).toContain("animation-play-state: paused");
+  });
+
+  it("reuses final card motion bounds across pointer moves", () => {
+    expect(figureMotionCard).toContain("motionBoundsRef");
+    expect(figureMotionCard).toContain("readMotionBounds");
+    expect(figureMotionCard).toContain("motionBoundsRef.current = null");
   });
 
   it("shows the model name and high-contrast attribute labels on the final card", () => {
