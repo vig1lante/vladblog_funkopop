@@ -10,8 +10,9 @@ RARITY_STYLE_PROMPTS = {
         "Palette style: black, deep charcoal, metallic gold, warm amber glow."
     ),
     "Founder Legendary": (
-        "Palette style: black, antique gold, champagne highlights, "
-        "dark premium shadows."
+        "Palette style: deep saturated cosmic blue, midnight navy shadows, "
+        "dark sapphire and cobalt body tones, neon royal-blue glow, sparse "
+        "icy starlight speckles."
     ),
     "Foil": (
         "Palette style: pearlescent white, cyan, pink, lavender, "
@@ -41,8 +42,10 @@ RARITY_STYLE_PROMPTS = {
         "holo treatment."
     ),
     "Foil Founder Legendary": (
-        "Palette style: black, antique gold, champagne highlights, dark premium "
-        "shadows, with pearlescent cyan, pink, pale gold holographic "
+        "Palette style: deep saturated cosmic blue, midnight navy shadows, "
+        "dark sapphire and cobalt body tones, neon royal-blue glow, sparse "
+        "icy starlight speckles, "
+        "with pearlescent cyan, pink, pale gold holographic "
         "reflections. Add a strong visible rainbow foil sheen across the box "
         "frame, badge, label plate, and visible package edges, like a "
         "collectible trading card holo treatment."

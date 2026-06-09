@@ -155,6 +155,10 @@ export function MyFigurePage({ figure, user }: MyFigurePageProps) {
           <FigureMotionCard
             accent={displayedRarityStyle.accent}
             accent2={displayedRarityStyle.accent2}
+            foilFrame={displayedRarityStyle.foilFrame}
+            foilHue={displayedRarityStyle.foilHue}
+            foilTextureUrl={displayedRarityStyle.foilTextureUrl}
+            foilTintOpacity={displayedRarityStyle.foilTintOpacity}
             glow={displayedRarityStyle.glow}
             isFoil={displayedIsFoilRarity}
           >

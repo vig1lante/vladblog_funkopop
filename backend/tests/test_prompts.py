@@ -32,6 +32,9 @@ def test_build_figure_prompt_uses_safe_collectible_package_template() -> None:
     assert "Character name from Telegram: Vlad Blog" in prompt
     assert "small character name label" in prompt
     assert "Founder Legendary" not in prompt
+    assert "deep saturated cosmic blue" in prompt
+    assert "midnight navy" in prompt
+    assert "electric cyan" not in prompt
     assert "Main color:" not in prompt
     assert "Package palette style:" in prompt
     assert "Only include:" in prompt
@@ -101,7 +104,11 @@ def test_build_rarity_style_prompt_returns_specific_layers() -> None:
     assert "diamond" not in mythic_prompt
     assert "metallic gold" in legendary_prompt
     assert "octagon" not in legendary_prompt.lower()
-    assert "antique gold" in founder_prompt
+    assert "deep saturated cosmic blue" in founder_prompt
+    assert "midnight navy" in founder_prompt
+    assert "neon royal-blue glow" in founder_prompt
+    assert "electric cyan" not in founder_prompt
+    assert "antique gold" not in founder_prompt
     assert "crest" not in founder_prompt.lower()
     assert "holographic reflections" in foil_prompt
     assert "strong visible rainbow foil sheen" in foil_prompt
@@ -114,7 +121,11 @@ def test_build_rarity_style_prompt_returns_specific_layers() -> None:
     assert "strong visible rainbow foil sheen" in foil_mythic_prompt
     assert "metallic gold" in foil_legendary_prompt
     assert "holographic reflections" in foil_legendary_prompt
-    assert "antique gold" in foil_founder_prompt
+    assert "deep saturated cosmic blue" in foil_founder_prompt
+    assert "midnight navy" in foil_founder_prompt
+    assert "neon royal-blue glow" in foil_founder_prompt
+    assert "electric cyan" not in foil_founder_prompt
+    assert "antique gold" not in foil_founder_prompt
     assert "holographic reflections" in foil_founder_prompt
 
 
