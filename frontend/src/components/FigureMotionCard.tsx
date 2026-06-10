@@ -7,6 +7,8 @@ import {
   useRef,
 } from "react";
 
+import { appConfig } from "../config/appConfig";
+
 type FigureMotionCardProps = {
   accent: string;
   accent2: string;
@@ -70,6 +72,7 @@ export function FigureMotionCard({
     "--motion-accent-2": accent2,
     "--motion-foil-frame": foilFrame,
     "--motion-foil-hue": `${foilHue}deg`,
+    "--motion-foil-texture-opacity": appConfig.foilEffects.imageOpacity,
     "--motion-tint-opacity": foilTintOpacity,
     "--motion-glow": glow,
   } as CSSProperties;

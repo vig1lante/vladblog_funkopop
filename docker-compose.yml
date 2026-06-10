@@ -53,6 +53,7 @@ services:
     depends_on:
       - backend
     environment:
+      APP_CONFIG_PATH: /project_config/config.json
       PUBLIC_BACKEND_URL: ${PUBLIC_BACKEND_URL:-http://localhost:8000}
       VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-warn}
       SERVICE_LOG_PATH: /project_data/logs/frontend.log
@@ -73,6 +74,7 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend:/app
+      - ./config.json:/project_config/config.json:ro
       - frontend_node_modules:/app/node_modules
       - ./project_data/logs:/project_data/logs
       - ./scripts/service-log-entrypoint.sh:/usr/local/bin/service-log-entrypoint.sh:ro

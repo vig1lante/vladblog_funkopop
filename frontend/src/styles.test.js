@@ -54,6 +54,13 @@ const approvedRarityStyles = readFileSync(
   "utf8",
 );
 const frontendRoot = resolve(import.meta.dirname, "..");
+const appConfig = readFileSync(
+  resolve(import.meta.dirname, "config/appConfig.ts"),
+  "utf8",
+);
+const rootConfig = JSON.parse(
+  readFileSync(resolve(frontendRoot, "..", "config.json"), "utf8"),
+);
 const telegramViewportPath = resolve(
   import.meta.dirname,
   "lib/telegramViewport.ts",
@@ -522,17 +529,21 @@ describe("frontend styles", () => {
     expect(figureMotionCard).not.toContain("--motion-prism-y");
   });
 
-  it("keeps the final foil texture translucent so the figure remains visible", () => {
+  it("loads final foil texture opacity from the root config", () => {
     const foilTextureRule = styles.match(
       /\.figure-motion-foil \.figure-motion-foil-texture\s*\{([^}]*)\}/,
     )?.[1] ?? "";
-    const opacity = Number(
-      foilTextureRule.match(/opacity:\s*([0-9.]+)/)?.[1] ?? "NaN",
-    );
 
-    expect(foilTextureRule).not.toContain("opacity: 1");
-    expect(opacity).toBeGreaterThan(0);
-    expect(opacity).toBeLessThanOrEqual(0.38);
+    expect(rootConfig.foilEffects.imageOpacity).toBeTypeOf("number");
+    expect(appConfig).not.toContain("../../../config.json");
+    expect(appConfig).toContain("__APP_CONFIG__");
+    expect(appConfig).toContain("imageOpacity: clampOpacity");
+    expect(figureMotionCard).toContain("appConfig.foilEffects.imageOpacity");
+    expect(figureMotionCard).toContain("--motion-foil-texture-opacity");
+    expect(foilTextureRule).toContain(
+      "opacity: var(--motion-foil-texture-opacity",
+    );
+    expect(foilTextureRule).not.toMatch(/opacity:\s*[0-9.]+/);
   });
 
   it("clips foil texture corners and fades foil overlays away from card details with one mask", () => {

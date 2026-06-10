@@ -551,7 +551,7 @@ input[type="file"] {
 }
 
 .figure-motion-foil .figure-motion-foil-texture {
-  opacity: 0.28;
+  opacity: var(--motion-foil-texture-opacity, 0.24);
 }
 
 .figure-motion-foil .figure-motion-rarity-tint {
