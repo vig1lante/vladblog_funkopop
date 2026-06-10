@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { generateMyFigure, getGenerationJob } from "../api/generation";
 import { Button } from "../components/ui/Button";
@@ -18,8 +18,15 @@ type GenerationWaitingPageProps = {
   refreshFigure: () => Promise<Figure>;
 };
 
+type GenerationLoaderStyle = CSSProperties & {
+  "--generation-progress": string;
+};
+
 const friendlyGenerationError =
   "Не удалось сгенерировать фигурку. Попробуй другое фото или режим без фото.";
+
+const ESTIMATED_GENERATION_DURATION_MS = 90_000;
+const ESTIMATED_PROGRESS_CAP = 96;
 
 const waitingCopyLines = [
   "Собираем образ и сохраняем детали",
@@ -27,6 +34,16 @@ const waitingCopyLines = [
   "Наводим мягкий блеск на упаковку",
   "Проверяем, чтобы фигурка выглядела как лимитка",
   "Почти готово, финальные штрихи уже внутри",
+  "Выравниваем силуэт под витрину",
+  "Добавляем характер в маленькие детали",
+  "Готовим коробку для редкого выпуска",
+  "Сверяем стиль с твоим образом",
+  "Приглушаем фон, чтобы фигурка сияла",
+  "Полируем карточку коллекционера",
+  "Настраиваем свет на лице и упаковке",
+  "Собираем обычную и блестящую версию",
+  "Закрепляем детали перед финальным рендером",
+  "Уже складываем результат в коллекцию",
 ];
 
 export function GenerationWaitingPage({
@@ -43,6 +60,7 @@ export function GenerationWaitingPage({
   const [isChecking, setIsChecking] = useState(false);
   const [isStartingJob, setIsStartingJob] = useState(false);
   const [copyIndex, setCopyIndex] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(0);
   const startingRef = useRef(false);
   const completedRef = useRef(false);
   const onCompletedRef = useRef(onCompleted);
@@ -65,6 +83,29 @@ export function GenerationWaitingPage({
     }, 2600);
     return () => window.clearInterval(timer);
   }, [error, job?.status]);
+
+  useEffect(() => {
+    if (error || job?.status === "completed" || job?.status === "failed") {
+      return;
+    }
+
+    let frameId = 0;
+    let lastProgress = -1;
+    const startedAtMs =
+      parseJobTime(job?.started_at ?? job?.created_at) ?? Date.now();
+
+    function updateProgress() {
+      const progress = getEstimatedProgressPercent(startedAtMs);
+      if (progress !== lastProgress) {
+        lastProgress = progress;
+        setProgressPercent(progress);
+      }
+      frameId = window.requestAnimationFrame(updateProgress);
+    }
+
+    updateProgress();
+    return () => window.cancelAnimationFrame(frameId);
+  }, [error, job?.created_at, job?.started_at, job?.status]);
 
   useEffect(() => {
     if (jobId || startingRef.current) {
@@ -181,9 +222,13 @@ export function GenerationWaitingPage({
     setJob(null);
     setJobId(null);
     setCopyIndex(0);
+    setProgressPercent(0);
   }
 
   const waitingCopy = getWaitingCopy(job?.status, copyIndex);
+  const loaderStyle: GenerationLoaderStyle = {
+    "--generation-progress": `${progressPercent}%`,
+  };
 
   return (
     <PageShell>
@@ -193,7 +238,7 @@ export function GenerationWaitingPage({
         <h1>Создаём коллекционную фигурку</h1>
         {!error && (
           <div className="generation-waiting" aria-label="Статус создания">
-            <div className="calm-loader" aria-hidden="true">
+            <div className="calm-loader" style={loaderStyle} aria-hidden="true">
               <span className="generation-pulse-ring" />
               <span className="generation-pulse-ring generation-pulse-ring-delay" />
               <span className="collector-orbit collector-orbit-slow">
@@ -250,6 +295,20 @@ function getWaitingCopy(status: string | undefined, index: number): string {
     return "Готовим результат";
   }
   return waitingCopyLines[index % waitingCopyLines.length];
+}
+
+function getEstimatedProgressPercent(startedAtMs: number): number {
+  const elapsedMs = Math.max(0, Date.now() - startedAtMs);
+  const progress = (elapsedMs / ESTIMATED_GENERATION_DURATION_MS) * 100;
+  return Math.min(ESTIMATED_PROGRESS_CAP, Math.round(progress * 10) / 10);
+}
+
+function parseJobTime(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function isCompleted(job: GenerationJob, figure: Figure): boolean {

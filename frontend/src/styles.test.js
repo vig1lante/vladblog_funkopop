@@ -250,7 +250,10 @@ describe("frontend styles", () => {
     expect(waitingPage).toContain("waitingCopyLines");
     expect(waitingPage).toContain("setCopyIndex");
     expect(waitingPage).not.toContain("generation-status");
-    expect(waitingPage).not.toContain("generation-progress");
+    expect(waitingPage).toContain("ESTIMATED_GENERATION_DURATION_MS = 90_000");
+    expect(waitingPage).toContain("ESTIMATED_PROGRESS_CAP = 96");
+    expect(waitingPage).toContain("requestAnimationFrame");
+    expect(waitingPage).toContain("--generation-progress");
     expect(waitingPage).not.toContain("Проверить статус");
     expect(waitingPage).not.toContain("Генерация идёт");
     expect(waitingPage).not.toContain("Собираем образ...");
@@ -263,8 +266,15 @@ describe("frontend styles", () => {
     expect(waitingPage).toContain("Наводим мягкий блеск на упаковку");
     expect(waitingPage).toContain("Проверяем, чтобы фигурка выглядела как лимитка");
     expect(waitingPage).toContain("Почти готово, финальные штрихи уже внутри");
+    const waitingCopyMatch = waitingPage.match(
+      /const waitingCopyLines = \[([\s\S]*?)\];/,
+    );
+    const waitingCopyLineCount = waitingCopyMatch?.[1].match(/"[^"]+"/g) ?? [];
+    expect(waitingCopyLineCount).toHaveLength(15);
     expect(styles).toContain(".calm-loader");
     expect(styles).toContain(".generation-pulse-ring");
+    expect(styles).toContain("--generation-progress");
+    expect(styles).toContain("conic-gradient");
     expect(styles).toContain("softOrbit");
     expect(styles).toContain("gentlePulse");
     expect(styles).not.toContain(".generation-status");
