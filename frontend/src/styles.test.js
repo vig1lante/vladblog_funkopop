@@ -309,7 +309,6 @@ describe("frontend styles", () => {
     expect(styles).toContain(".figure-motion-glare");
     expect(styles).toContain(".figure-motion-shadow");
     expect(styles).toContain("--motion-rotate-x");
-    expect(styles).toContain("--motion-angle");
     expect(styles).toContain("--motion-card-scale");
     expect(styles).toContain("--motion-texture-x");
     expect(styles).toContain("--motion-texture-y");
@@ -574,15 +573,35 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".figure-motion-normal .figure-motion-prism");
   });
 
-  it("keeps final card pointer motion from repainting foil gradients every frame", () => {
-    expect(figureMotionCard).toContain("TEXTURE_UPDATE_INTERVAL_MS");
-    expect(figureMotionCard).toContain("lastTextureUpdateAtRef");
-    expect(figureMotionCard).toContain("shouldUpdateTexture");
-    expect(figureMotionCard).toContain("updateTexture: shouldUpdateTexture");
+  it("keeps final card motion from painting a cursor-centered glare", () => {
+    expect(figureMotionCard).not.toContain("TEXTURE_UPDATE_INTERVAL_MS");
+    expect(figureMotionCard).not.toContain("lastTextureUpdateAtRef");
+    expect(figureMotionCard).not.toContain("shouldUpdateTexture");
+    expect(figureMotionCard).not.toContain("updateTexture");
+    expect(figureMotionCard).not.toContain("--motion-pointer-x");
+    expect(figureMotionCard).not.toContain("--motion-pointer-y");
+    expect(figureMotionCard).not.toContain("--motion-angle");
+    expect(styles).not.toContain("--motion-pointer-x");
+    expect(styles).not.toContain("--motion-pointer-y");
+    expect(styles).not.toContain("--motion-angle");
+    expect(styles).not.toContain("var(--motion-pointer-x)");
+    expect(styles).not.toContain("var(--motion-pointer-y)");
     expect(figureMotionCard).not.toContain('element.style.setProperty(\n    "--motion-card-scale"');
     expect(figureMotionCard).not.toContain('element.style.setProperty(\n      "--motion-foil-hue"');
     expect(figureMotionCard).not.toContain('"--motion-foil-hue",');
     expect(styles).not.toContain("will-change: transform, filter");
+  });
+
+  it("keeps normal and foil final card motion layers mounted without pointer glare variables", () => {
+    expect(figureMotionCard).toContain("figure-motion-card");
+    expect(figureMotionCard).toContain("figure-motion-normal");
+    expect(figureMotionCard).toContain("figure-motion-foil");
+    expect(figureMotionCard).toContain("figure-motion-edge");
+    expect(figureMotionCard).toContain("figure-motion-glare");
+    expect(figureMotionCard).toContain("figure-motion-foil-texture");
+    expect(styles).toContain(".figure-motion-edge");
+    expect(styles).toContain(".figure-motion-glare");
+    expect(styles).toContain(".figure-motion-foil-texture");
   });
 
   it("pauses decorative foil sweeps while the final card is actively dragged", () => {
