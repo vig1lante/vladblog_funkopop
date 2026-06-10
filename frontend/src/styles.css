@@ -360,9 +360,6 @@ input[type="file"] {
   --motion-rotate-y: 0deg;
   --motion-translate-x: 0px;
   --motion-translate-y: 0px;
-  --motion-pointer-x: 50%;
-  --motion-pointer-y: 50%;
-  --motion-angle: 115deg;
   --motion-texture-x: 0px;
   --motion-texture-y: 0px;
   --motion-texture-scale: 1;
@@ -436,7 +433,7 @@ input[type="file"] {
   border-radius: 28px;
   background:
     radial-gradient(
-      ellipse at var(--motion-pointer-x) var(--motion-pointer-y),
+      ellipse at 50% 32%,
       color-mix(in srgb, var(--motion-glow) 92%, transparent),
       rgba(0, 0, 0, 0.28) 42%,
       transparent 74%
@@ -500,7 +497,6 @@ input[type="file"] {
 .figure-motion-rarity-tint {
   z-index: 2;
   background:
-    radial-gradient(circle at var(--motion-pointer-x) var(--motion-pointer-y), color-mix(in srgb, var(--motion-accent-2) 42%, transparent), transparent 34%),
     linear-gradient(135deg, color-mix(in srgb, var(--motion-accent) 54%, transparent), color-mix(in srgb, var(--motion-accent-2) 36%, transparent)),
     linear-gradient(90deg, transparent, var(--motion-foil-frame), transparent);
   mix-blend-mode: color;
@@ -509,15 +505,9 @@ input[type="file"] {
 
 .figure-motion-glare {
   z-index: 3;
-  background:
-    radial-gradient(
-      circle at var(--motion-pointer-x) var(--motion-pointer-y),
-      rgba(255, 255, 255, 0.3) 0 8%,
-      color-mix(in srgb, var(--motion-accent) 18%, transparent) 14%,
-      transparent 36%
-    );
+  background: none;
   mix-blend-mode: screen;
-  opacity: 0.44;
+  opacity: 0;
 }
 
 .figure-motion-edge {
@@ -535,7 +525,7 @@ input[type="file"] {
 }
 
 .figure-motion-normal .figure-motion-glare {
-  opacity: 0.34;
+  opacity: 0;
 }
 
 .figure-motion-foil .figure-motion-shadow {
@@ -567,7 +557,7 @@ input[type="file"] {
       transparent 60%
     ),
     conic-gradient(
-      from var(--motion-angle) at var(--motion-pointer-x) var(--motion-pointer-y),
+      from 140deg at 50% 50%,
       rgba(255, 255, 255, 0.16),
       rgba(216, 246, 255, 0.24),
       rgba(255, 202, 243, 0.28),
@@ -577,7 +567,7 @@ input[type="file"] {
     );
   background-size: 260% 260%, 100% 100%;
   background-position:
-    var(--motion-pointer-x) var(--motion-pointer-y),
+    50% 50%,
     0 0;
   mix-blend-mode: screen;
   opacity: 0.78;
@@ -586,14 +576,7 @@ input[type="file"] {
 }
 
 .figure-motion-foil .figure-motion-glare {
-  background:
-    radial-gradient(
-      circle at var(--motion-pointer-x) var(--motion-pointer-y),
-      rgba(255, 255, 255, 0.58) 0 7%,
-      rgba(216, 246, 255, 0.22) 12%,
-      transparent 34%
-    );
-  opacity: 0.78;
+  opacity: 0;
 }
 
 .figure-motion-foil .figure-motion-edge {
@@ -2116,8 +2099,11 @@ input[type="file"] {
     transform: none !important;
   }
 
-  .figure-motion-prism,
-  .figure-motion-glare {
+  .figure-motion-prism {
     opacity: 0.28 !important;
+  }
+
+  .figure-motion-glare {
+    opacity: 0 !important;
   }
 }

@@ -27,7 +27,6 @@ type PendingMotion = {
   normalizedX: number;
   normalizedY: number;
   width: number;
-  updateTexture: boolean;
 };
 
 type MotionBounds = {
@@ -37,16 +36,11 @@ type MotionBounds = {
   width: number;
 };
 
-const TEXTURE_UPDATE_INTERVAL_MS = 120;
-
 const motionVariableNames = [
   "--motion-rotate-x",
   "--motion-rotate-y",
   "--motion-translate-x",
   "--motion-translate-y",
-  "--motion-pointer-x",
-  "--motion-pointer-y",
-  "--motion-angle",
   "--motion-texture-x",
   "--motion-texture-y",
   "--motion-texture-scale",
@@ -64,7 +58,6 @@ export function FigureMotionCard({
   isFoil,
 }: FigureMotionCardProps) {
   const frameRef = useRef<number | null>(null);
-  const lastTextureUpdateAtRef = useRef(0);
   const motionBoundsRef = useRef<MotionBounds | null>(null);
   const pendingMotionRef = useRef<PendingMotion | null>(null);
   const motionStyle = {
@@ -111,14 +104,13 @@ export function FigureMotionCard({
       normalizedX,
       normalizedY,
       width: bounds.width,
-      updateTexture: false,
     };
 
     if (frameRef.current !== null) {
       return;
     }
 
-    frameRef.current = window.requestAnimationFrame((timestamp) => {
+    frameRef.current = window.requestAnimationFrame(() => {
       frameRef.current = null;
       const pendingMotion = pendingMotionRef.current;
 
@@ -126,22 +118,7 @@ export function FigureMotionCard({
         return;
       }
 
-      const shouldUpdateTexture =
-        lastTextureUpdateAtRef.current === 0 ||
-        timestamp - lastTextureUpdateAtRef.current >=
-          TEXTURE_UPDATE_INTERVAL_MS;
-
-      if (shouldUpdateTexture) {
-        lastTextureUpdateAtRef.current = timestamp;
-      }
-
-      applyMotion(
-        {
-          ...pendingMotion,
-          updateTexture: shouldUpdateTexture,
-        },
-        isFoil,
-      );
+      applyMotion(pendingMotion, isFoil);
     });
   }
 
@@ -159,7 +136,6 @@ export function FigureMotionCard({
 
   function handlePointerReset(event: PointerEvent<HTMLDivElement>) {
     pendingMotionRef.current = null;
-    lastTextureUpdateAtRef.current = 0;
     motionBoundsRef.current = null;
     if (frameRef.current !== null) {
       window.cancelAnimationFrame(frameRef.current);
@@ -225,7 +201,7 @@ export function FigureMotionCard({
 }
 
 function applyMotion(
-  { element, height, normalizedX, normalizedY, updateTexture, width }: PendingMotion,
+  { element, height, normalizedX, normalizedY, width }: PendingMotion,
   isFoil: boolean,
 ) {
   const axisX = normalizedX * 2 - 1;
@@ -268,20 +244,6 @@ function applyMotion(
     );
   }
 
-  if (updateTexture) {
-    element.style.setProperty(
-      "--motion-pointer-x",
-      `${(normalizedX * 100).toFixed(1)}%`,
-    );
-    element.style.setProperty(
-      "--motion-pointer-y",
-      `${(normalizedY * 100).toFixed(1)}%`,
-    );
-    element.style.setProperty(
-      "--motion-angle",
-      `${(115 + axisX * 90).toFixed(1)}deg`,
-    );
-  }
 }
 
 function resetMotion(element: HTMLDivElement) {
