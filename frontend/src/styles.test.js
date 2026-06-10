@@ -602,6 +602,36 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".figure-motion-normal .figure-motion-edge-shine");
   });
 
+  it("keeps the animated foil frame inside the final card around the generated image", () => {
+    expect(myFigurePage).not.toContain("AnimatedFoilFrame");
+    expect(figureCard).toContain("AnimatedFoilFrame");
+    expect(figureCard).toContain("<AnimatedFoilFrame");
+    expect(figureCard).toContain("active={showImage}");
+    expect(figureCard).toContain("rarity={figure.rarity}");
+    expect(figureCard).toContain("figure-image-frame");
+    expect(figureCard.indexOf("<AnimatedFoilFrame")).toBeLessThan(
+      figureCard.indexOf('className="figure-image-stage"'),
+    );
+    expect(styles).toContain(".figure-image-frame");
+    expect(styles).toContain(".figure-image-frame .animated-foil-frame-shell");
+    expect(styles).toContain(".figure-image-frame .animated-foil-frame-glow");
+    expect(styles).toContain(".animated-foil-frame-border::before");
+    expect(styles).toContain("animation: foilFrameSpin");
+  });
+
+  it("adds a foil-only animated frame inside the final card surface", () => {
+    expect(figureCard).toContain("getFoilFramePalette");
+    expect(figureCard).toContain("foilFramePalette");
+    expect(figureCard).toContain('"--foil-card-frame-primary"');
+    expect(figureCard).toContain("figure-card-foil-frame");
+    expect(figureCard).toContain("{foilFramePalette && showImage &&");
+    expect(styles).toContain(".figure-card-foil-frame");
+    expect(styles).toContain(".figure-card-foil-frame::before");
+    expect(styles).toContain(".figure-card-foil-frame::after");
+    expect(styles).toContain("var(--foil-card-frame-primary)");
+    expect(styles).toContain("var(--foil-card-frame-glow)");
+  });
+
   it("paints pointer-driven foil glare without React state churn", () => {
     expect(figureMotionCard).not.toContain("TEXTURE_UPDATE_INTERVAL_MS");
     expect(figureMotionCard).not.toContain("lastTextureUpdateAtRef");

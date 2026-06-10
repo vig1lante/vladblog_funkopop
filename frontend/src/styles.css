@@ -345,6 +345,57 @@ input[type="file"] {
   z-index: 1;
 }
 
+.figure-card-foil-frame {
+  position: absolute;
+  inset: 7px;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 2px;
+  pointer-events: none;
+  contain: paint;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.figure-card-foil-frame::before,
+.figure-card-foil-frame::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.figure-card-foil-frame::before {
+  inset: -54%;
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--foil-card-frame-primary),
+      var(--foil-card-frame-secondary),
+      var(--foil-card-frame-accent),
+      var(--foil-card-frame-primary),
+      var(--foil-card-frame-secondary),
+      var(--foil-card-frame-primary)
+    );
+  animation: foilFrameSpin 12s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.figure-card-foil-frame::after {
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 22px var(--foil-card-frame-glow),
+    inset 0 0 18px rgba(255, 255, 255, 0.12);
+}
+
 .figure-result-card {
   width: min(100%, 360px);
   display: grid;
@@ -428,6 +479,102 @@ input[type="file"] {
   width: min(100%, 342px);
   display: grid;
   place-items: center;
+}
+
+.animated-foil-frame-shell {
+  --card-radius: 26px;
+  --foil-frame-width: 3px;
+  --foil-frame-duration: 9s;
+  --foil-frame-mobile-duration: 14s;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  border-radius: calc(var(--card-radius) + 8px);
+}
+
+.animated-foil-frame-glow,
+.animated-foil-frame-border {
+  position: absolute;
+  pointer-events: none;
+}
+
+.animated-foil-frame-glow {
+  inset: -18px;
+  z-index: 0;
+  border-radius: calc(var(--card-radius) + 18px);
+  background:
+    radial-gradient(
+      ellipse at 50% 14%,
+      var(--foil-frame-glow),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse at 50% 88%,
+      var(--foil-frame-shadow),
+      transparent 64%
+    );
+  filter: blur(18px);
+  opacity: var(--foil-frame-glow-opacity, 0.72);
+  transform: translateZ(0);
+}
+
+.animated-foil-frame-border {
+  inset: -5px;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: calc(var(--card-radius) + 7px);
+  padding: var(--foil-frame-width);
+  contain: paint;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.animated-foil-frame-border::before {
+  content: "";
+  position: absolute;
+  inset: -52%;
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--foil-frame-primary),
+      var(--foil-frame-secondary),
+      var(--foil-frame-accent),
+      var(--foil-frame-primary),
+      var(--foil-frame-secondary),
+      var(--foil-frame-primary)
+    );
+  animation: foilFrameSpin var(--foil-frame-duration) linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.animated-foil-frame-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--card-radius);
+}
+
+.animated-foil-frame-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.36),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
 }
 
 .figure-motion-card .figure-card {
@@ -676,6 +823,48 @@ input[type="file"] {
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--style-accent) 12%, transparent), transparent 38%),
     transparent;
   border-radius: 20px;
+}
+
+.figure-image-frame {
+  position: relative;
+  width: 100%;
+  display: grid;
+  isolation: isolate;
+  border-radius: 22px;
+}
+
+.figure-image-frame .animated-foil-frame-shell {
+  --card-radius: 20px;
+}
+
+.figure-image-frame .animated-foil-frame-glow {
+  inset: -12px;
+  border-radius: 28px;
+  filter: blur(14px);
+  opacity: var(--foil-frame-glow-opacity, 0.72);
+  background:
+    radial-gradient(
+      ellipse at 50% 18%,
+      var(--foil-frame-glow),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse at 50% 86%,
+      var(--foil-frame-shadow),
+      transparent 62%
+    );
+}
+
+.figure-image-frame .animated-foil-frame-border {
+  inset: -4px;
+  border-radius: 26px;
+}
+
+.figure-image-frame .animated-foil-frame-inner::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.24),
+    inset 0 0 18px rgba(255, 255, 255, 0.08);
 }
 
 .figure-image-stage::before,
@@ -2063,6 +2252,12 @@ input[type="file"] {
   }
 }
 
+@keyframes foilFrameSpin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 @media (max-width: 720px) {
   .game-panel {
     padding: 28px 16px;
@@ -2104,6 +2299,17 @@ input[type="file"] {
 
 }
 
+@media (pointer: coarse) {
+  .animated-foil-frame-border::before {
+    animation-duration: var(--foil-frame-mobile-duration);
+  }
+
+  .animated-foil-frame-glow {
+    filter: blur(14px);
+    opacity: var(--foil-frame-glow-opacity-mobile, 0.52);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2125,5 +2331,9 @@ input[type="file"] {
 
   .figure-motion-glare {
     opacity: 0 !important;
+  }
+
+  .animated-foil-frame-glow {
+    opacity: var(--foil-frame-glow-opacity-reduced, 0.4);
   }
 }

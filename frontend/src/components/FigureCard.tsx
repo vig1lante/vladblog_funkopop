@@ -1,5 +1,7 @@
 import { type CSSProperties, useState } from "react";
 
+import { AnimatedFoilFrame } from "./final/AnimatedFoilFrame";
+import { getFoilFramePalette } from "./final/foilFramePalettes";
 import { RarityBadge } from "./RarityBadge";
 import { getApprovedRarityStyle } from "../lib/approvedRarityStyles";
 import { getPresetLabel } from "../lib/presetLabels";
@@ -20,10 +22,15 @@ export function FigureCard({
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(figure.image_url && !imageFailed);
   const rarityStyle = getApprovedRarityStyle(figure.rarity);
+  const foilFramePalette = getFoilFramePalette(figure.rarity);
   const cardStyle = {
     "--style-accent": rarityStyle.accent,
     "--style-accent-2": rarityStyle.accent2,
     "--style-glow": rarityStyle.glow,
+    "--foil-card-frame-primary": foilFramePalette?.primary,
+    "--foil-card-frame-secondary": foilFramePalette?.secondary,
+    "--foil-card-frame-accent": foilFramePalette?.accent,
+    "--foil-card-frame-glow": foilFramePalette?.glow,
   } as CSSProperties;
 
   return (
@@ -31,23 +38,30 @@ export function FigureCard({
       className={`figure-card figure-rarity-card rarity-style-${rarityStyle.shape} rarity-power-${rarityStyle.power}`}
       style={cardStyle}
     >
-      <div className="figure-image-stage">
-        {showImage ? (
-          <img
-            className="figure-image"
-            alt="Готовая фигурка"
-            src={figure.image_url ?? ""}
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <div className="figure-image-placeholder">
-            <span>
-              {figure.image_url
-                ? "Изображение готово, но не загрузилось. Попробуй обновить экран."
-                : "Здесь скоро появится твоя AI Funko Pop фигурка"}
-            </span>
+      {foilFramePalette && showImage && (
+        <span className="figure-card-foil-frame" aria-hidden="true" />
+      )}
+      <div className="figure-image-frame">
+        <AnimatedFoilFrame active={showImage} rarity={figure.rarity}>
+          <div className="figure-image-stage">
+            {showImage ? (
+              <img
+                className="figure-image"
+                alt="Готовая фигурка"
+                src={figure.image_url ?? ""}
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <div className="figure-image-placeholder">
+                <span>
+                  {figure.image_url
+                    ? "Изображение готово, но не загрузилось. Попробуй обновить экран."
+                    : "Здесь скоро появится твоя AI Funko Pop фигурка"}
+                </span>
+              </div>
+            )}
           </div>
-        )}
+        </AnimatedFoilFrame>
       </div>
       <div className="figure-card-body">
         <div className="figure-number">{figure.display_number}</div>

@@ -10,5 +10,12 @@
     "saturation": 1.18,
     "contrast": 1.06,
     "mobileTextureOpacityMultiplier": 0.75
+  },
+  "foilFrame": {
+    "enabled": true,
+    "borderWidth": 3,
+    "glowOpacity": 0.72,
+    "animationDurationSeconds": 9,
+    "mobileAnimationDurationSeconds": 14
   }
 }

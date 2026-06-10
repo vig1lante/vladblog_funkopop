@@ -11,6 +11,14 @@ export const DEFAULT_FOIL_EFFECTS = {
   mobileTextureOpacityMultiplier: 0.75,
 } as const;
 
+export const DEFAULT_FOIL_FRAME = {
+  enabled: true,
+  borderWidth: 3,
+  glowOpacity: 0.72,
+  animationDurationSeconds: 9,
+  mobileAnimationDurationSeconds: 14,
+} as const;
+
 type RawAppConfig = {
   foilEffects?: {
     textureOpacityIdle?: unknown;
@@ -23,6 +31,13 @@ type RawAppConfig = {
     saturation?: unknown;
     contrast?: unknown;
     mobileTextureOpacityMultiplier?: unknown;
+  };
+  foilFrame?: {
+    enabled?: unknown;
+    borderWidth?: unknown;
+    glowOpacity?: unknown;
+    animationDurationSeconds?: unknown;
+    mobileAnimationDurationSeconds?: unknown;
   };
 };
 
@@ -100,6 +115,34 @@ export const appConfig = {
     mobileTextureOpacityMultiplier: clampOpacity(
       config.foilEffects?.mobileTextureOpacityMultiplier,
       DEFAULT_FOIL_EFFECTS.mobileTextureOpacityMultiplier,
+    ),
+  },
+  foilFrame: {
+    enabled:
+      typeof config.foilFrame?.enabled === "boolean"
+        ? config.foilFrame.enabled
+        : DEFAULT_FOIL_FRAME.enabled,
+    borderWidth: clampRange(
+      config.foilFrame?.borderWidth,
+      DEFAULT_FOIL_FRAME.borderWidth,
+      1,
+      6,
+    ),
+    glowOpacity: clampOpacity(
+      config.foilFrame?.glowOpacity,
+      DEFAULT_FOIL_FRAME.glowOpacity,
+    ),
+    animationDurationSeconds: clampRange(
+      config.foilFrame?.animationDurationSeconds,
+      DEFAULT_FOIL_FRAME.animationDurationSeconds,
+      4,
+      30,
+    ),
+    mobileAnimationDurationSeconds: clampRange(
+      config.foilFrame?.mobileAnimationDurationSeconds,
+      DEFAULT_FOIL_FRAME.mobileAnimationDurationSeconds,
+      6,
+      40,
     ),
   },
 } as const;

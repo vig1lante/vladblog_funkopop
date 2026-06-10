@@ -48,6 +48,25 @@ describe("appConfig", () => {
     );
   });
 
+  it("loads foil frame settings from root config with safe fallbacks", () => {
+    expect(rootConfig.foilFrame.enabled).toBe(true);
+    expect(appConfig.foilFrame.enabled).toBe(rootConfig.foilFrame.enabled);
+    expect(appConfig.foilFrame.borderWidth).toBe(
+      rootConfig.foilFrame.borderWidth,
+    );
+    expect(appConfig.foilFrame.glowOpacity).toBe(
+      rootConfig.foilFrame.glowOpacity,
+    );
+    expect(appConfig.foilFrame.animationDurationSeconds).toBe(
+      rootConfig.foilFrame.animationDurationSeconds,
+    );
+    expect(appConfig.foilFrame.mobileAnimationDurationSeconds).toBe(
+      rootConfig.foilFrame.mobileAnimationDurationSeconds,
+    );
+    expect(appConfigSource).toContain("DEFAULT_FOIL_FRAME");
+    expect(appConfigSource).toContain("foilFrame");
+  });
+
   it("clamps foil effect values and falls back for invalid values", () => {
     expect(clampOpacity(0.42)).toBe(0.42);
     expect(clampOpacity(-0.5)).toBe(0);
