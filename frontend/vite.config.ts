@@ -16,7 +16,11 @@ function loadAppConfig(): unknown {
 
   for (const configPath of configPaths) {
     if (existsSync(configPath)) {
-      return JSON.parse(readFileSync(configPath, "utf8"));
+      try {
+        return JSON.parse(readFileSync(configPath, "utf8"));
+      } catch {
+        return {};
+      }
     }
   }
 
