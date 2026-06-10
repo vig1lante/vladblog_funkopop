@@ -44,6 +44,10 @@ const motionVariableNames = [
   "--motion-texture-x",
   "--motion-texture-y",
   "--motion-texture-scale",
+  "--motion-glare-x",
+  "--motion-glare-y",
+  "--motion-foil-x",
+  "--motion-foil-y",
 ] as const;
 
 export function FigureMotionCard({
@@ -60,16 +64,36 @@ export function FigureMotionCard({
   const frameRef = useRef<number | null>(null);
   const motionBoundsRef = useRef<MotionBounds | null>(null);
   const pendingMotionRef = useRef<PendingMotion | null>(null);
+  const foilEffects = appConfig.foilEffects;
+  const mobileTextureOpacityMultiplier =
+    foilEffects.mobileTextureOpacityMultiplier;
   const motionStyle = {
     "--motion-accent": accent,
     "--motion-accent-2": accent2,
     "--motion-foil-frame": foilFrame,
     "--motion-foil-hue": `${foilHue}deg`,
-    "--motion-foil-texture-opacity": appConfig.foilEffects.imageOpacity,
-    "--motion-tint-opacity": foilTintOpacity,
+    "--motion-foil-texture-opacity-idle": foilEffects.textureOpacityIdle,
+    "--motion-foil-texture-opacity-active": foilEffects.textureOpacityActive,
+    "--motion-foil-texture-opacity-idle-mobile":
+      foilEffects.textureOpacityIdle * mobileTextureOpacityMultiplier,
+    "--motion-foil-texture-opacity-active-mobile":
+      foilEffects.textureOpacityActive * mobileTextureOpacityMultiplier,
+    "--motion-foil-glare-opacity-idle": foilEffects.glareOpacityIdle,
+    "--motion-foil-glare-opacity-active": foilEffects.glareOpacityActive,
+    "--motion-foil-edge-shine-opacity": foilEffects.edgeShineOpacity,
+    "--motion-foil-center-mask-radius": `${foilEffects.centerMaskRadius}%`,
+    "--motion-foil-blend-mode": foilEffects.blendMode,
+    "--motion-foil-saturation": foilEffects.saturation,
+    "--motion-foil-contrast": foilEffects.contrast,
+    "--motion-rarity-edge-opacity": `${Math.min(foilTintOpacity * 34, 16).toFixed(2)}%`,
     "--motion-glow": glow,
   } as CSSProperties;
   const shouldShowFoilTexture = isFoil && Boolean(foilTextureUrl);
+  const textureStyle = shouldShowFoilTexture
+    ? ({
+        "--motion-foil-texture-url": `url("${foilTextureUrl}")`,
+      } as CSSProperties)
+    : undefined;
 
   useEffect(() => {
     return () => {
@@ -182,13 +206,13 @@ export function FigureMotionCard({
         {isFoil && (
           <span className="figure-motion-foil-effects" aria-hidden="true">
             {shouldShowFoilTexture && (
-              <span className="figure-motion-foil-texture">
-                <img src={foilTextureUrl ?? ""} alt="" />
-              </span>
+              <span
+                className="figure-motion-foil-texture"
+                style={textureStyle}
+              />
             )}
-            <span className="figure-motion-rarity-tint" />
             <span className="figure-motion-glare" />
-            <span className="figure-motion-prism" />
+            <span className="figure-motion-edge-shine" />
           </span>
         )}
         {!isFoil && (
@@ -231,6 +255,22 @@ function applyMotion(
 
   if (isFoil) {
     element.style.setProperty(
+      "--motion-glare-x",
+      `${(normalizedX * 100).toFixed(2)}%`,
+    );
+    element.style.setProperty(
+      "--motion-glare-y",
+      `${(normalizedY * 100).toFixed(2)}%`,
+    );
+    element.style.setProperty(
+      "--motion-foil-x",
+      `${(100 - normalizedX * 100).toFixed(2)}%`,
+    );
+    element.style.setProperty(
+      "--motion-foil-y",
+      `${(100 - normalizedY * 100).toFixed(2)}%`,
+    );
+    element.style.setProperty(
       "--motion-texture-x",
       `${(axisX * 70 * textureRange).toFixed(2)}px`,
     );
@@ -243,7 +283,6 @@ function applyMotion(
       `${(1 + logDistance / 10).toFixed(3)}`,
     );
   }
-
 }
 
 function resetMotion(element: HTMLDivElement) {

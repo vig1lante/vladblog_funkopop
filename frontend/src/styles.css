@@ -363,14 +363,26 @@ input[type="file"] {
   --motion-texture-x: 0px;
   --motion-texture-y: 0px;
   --motion-texture-scale: 1;
+  --motion-glare-x: 50%;
+  --motion-glare-y: 50%;
+  --motion-foil-x: 50%;
+  --motion-foil-y: 50%;
   --motion-foil-hue: 0deg;
-  --motion-tint-opacity: 0;
-  --motion-foil-readable-mask: linear-gradient(
-    to bottom,
-    #000 0 56%,
-    rgba(0, 0, 0, 0.54) 66%,
-    rgba(0, 0, 0, 0.18) 78%,
-    rgba(0, 0, 0, 0.08) 100%
+  --motion-foil-texture-opacity-idle: 0.07;
+  --motion-foil-texture-opacity-active: 0.13;
+  --motion-foil-texture-opacity: var(--motion-foil-texture-opacity-idle);
+  --motion-foil-glare-opacity-idle: 0.1;
+  --motion-foil-glare-opacity-active: 0.42;
+  --motion-foil-glare-opacity: var(--motion-foil-glare-opacity-idle);
+  --motion-foil-edge-shine-opacity: 0.24;
+  --motion-foil-center-mask-radius: 42%;
+  --motion-foil-readable-mask: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 0%,
+    transparent calc(var(--motion-foil-center-mask-radius) - 12%),
+    rgba(0, 0, 0, 0.18) var(--motion-foil-center-mask-radius),
+    rgba(0, 0, 0, 0.62) 62%,
+    #000 82%
   );
   position: relative;
   width: min(100%, 360px);
@@ -384,9 +396,7 @@ input[type="file"] {
     scale3d(var(--motion-card-scale), var(--motion-card-scale), 1);
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
-  transition:
-    transform 330ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 160ms ease;
+  transition: transform 330ms cubic-bezier(0.2, 0.8, 0.2, 1);
   cursor: grab;
   overscroll-behavior: contain;
   touch-action: none;
@@ -402,13 +412,14 @@ input[type="file"] {
 
 .figure-motion-card.figure-motion-foil.is-motion-active {
   --motion-card-scale: 1.05;
+  --motion-foil-texture-opacity: var(--motion-foil-texture-opacity-active);
+  --motion-foil-glare-opacity: var(--motion-foil-glare-opacity-active);
 }
 
 .figure-motion-card.is-motion-active .figure-rarity-card::before,
 .figure-motion-card.is-motion-active .figure-card-body::before,
 .figure-motion-card.is-motion-active .figure-image-stage::before,
-.figure-motion-card.is-motion-active .figure-image-stage::after,
-.figure-motion-card.is-motion-active .figure-motion-prism {
+.figure-motion-card.is-motion-active .figure-image-stage::after {
   animation-play-state: paused;
 }
 
@@ -444,10 +455,9 @@ input[type="file"] {
 }
 
 .figure-motion-foil-effects,
-.figure-motion-prism,
+.figure-motion-edge-shine,
 .figure-motion-glare,
-.figure-motion-edge,
-.figure-motion-rarity-tint {
+.figure-motion-edge {
   position: absolute;
   inset: 0;
   border-radius: 26px;
@@ -458,10 +468,6 @@ input[type="file"] {
   z-index: 3;
   overflow: hidden;
   clip-path: inset(0 round 24px);
-  -webkit-mask-image: var(--motion-foil-readable-mask);
-  mask-image: var(--motion-foil-readable-mask);
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
   contain: paint;
   isolation: isolate;
 }
@@ -469,45 +475,40 @@ input[type="file"] {
 .figure-motion-foil-texture {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   overflow: hidden;
   border-radius: 26px;
+  background-image: var(--motion-foil-texture-url);
+  background-size: 180% 180%;
+  background-position: var(--motion-foil-x) var(--motion-foil-y);
   clip-path: inset(0 round 24px);
   contain: paint;
   opacity: 0;
   pointer-events: none;
-}
-
-.figure-motion-foil-texture img {
-  position: absolute;
-  inset: -18%;
-  width: 136%;
-  height: 136%;
-  max-width: none;
-  display: block;
-  object-fit: cover;
   transform:
     translate3d(var(--motion-texture-x, 0px), var(--motion-texture-y, 0px), 0)
     scale3d(var(--motion-texture-scale, 1), var(--motion-texture-scale, 1), 1);
-  filter: grayscale(0) saturate(4) hue-rotate(var(--motion-foil-hue, 0deg));
-  mix-blend-mode: overlay;
-  will-change: transform;
-}
-
-.figure-motion-rarity-tint {
-  z-index: 2;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--motion-accent) 54%, transparent), color-mix(in srgb, var(--motion-accent-2) 36%, transparent)),
-    linear-gradient(90deg, transparent, var(--motion-foil-frame), transparent);
-  mix-blend-mode: color;
-  opacity: 0;
+  filter: saturate(var(--motion-foil-saturation, 1.18)) contrast(var(--motion-foil-contrast, 1.06)) hue-rotate(var(--motion-foil-hue, 0deg));
+  mix-blend-mode: var(--motion-foil-blend-mode, screen);
+  -webkit-mask-image: var(--motion-foil-readable-mask);
+  mask-image: var(--motion-foil-readable-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  will-change: transform, background-position;
 }
 
 .figure-motion-glare {
   z-index: 3;
-  background: none;
+  background: radial-gradient(
+    circle at var(--motion-glare-x) var(--motion-glare-y),
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.26) 13%,
+    rgba(255, 255, 255, 0.08) 28%,
+    transparent 58%
+  );
   mix-blend-mode: screen;
-  opacity: 0;
+  opacity: var(--motion-foil-glare-opacity, 0.1);
+  transition: opacity 160ms ease;
 }
 
 .figure-motion-edge {
@@ -519,9 +520,39 @@ input[type="file"] {
     inset 0 -18px 30px rgba(0, 0, 0, 0.26);
 }
 
-.figure-motion-prism {
+.figure-motion-edge-shine {
   z-index: 4;
-  opacity: 0;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 32%,
+      rgba(255, 255, 255, 0.46) 48%,
+      rgba(255, 255, 255, 0.12) 58%,
+      transparent 78%
+    ),
+    radial-gradient(
+      ellipse at 50% 50%,
+      transparent 52%,
+      color-mix(in srgb, var(--motion-accent) var(--motion-rarity-edge-opacity, 10%), transparent) 82%,
+      transparent 100%
+    );
+  mix-blend-mode: screen;
+  opacity: var(--motion-foil-edge-shine-opacity, 0.24);
+  -webkit-mask-image: radial-gradient(
+    ellipse at 50% 48%,
+    transparent 0%,
+    transparent 56%,
+    rgba(0, 0, 0, 0.55) 68%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse at 50% 48%,
+    transparent 0%,
+    transparent 56%,
+    rgba(0, 0, 0, 0.55) 68%,
+    #000 100%
+  );
 }
 
 .figure-motion-normal .figure-motion-glare {
@@ -542,41 +573,6 @@ input[type="file"] {
 
 .figure-motion-foil .figure-motion-foil-texture {
   opacity: var(--motion-foil-texture-opacity, 0.24);
-}
-
-.figure-motion-foil .figure-motion-rarity-tint {
-  opacity: var(--motion-tint-opacity, 0.48);
-}
-
-.figure-motion-foil .figure-motion-prism {
-  background:
-    linear-gradient(
-      118deg,
-      transparent 0 35%,
-      rgba(255, 255, 255, 0.5) 45%,
-      transparent 60%
-    ),
-    conic-gradient(
-      from 140deg at 50% 50%,
-      rgba(255, 255, 255, 0.16),
-      rgba(216, 246, 255, 0.24),
-      rgba(255, 202, 243, 0.28),
-      rgba(255, 242, 176, 0.22),
-      color-mix(in srgb, var(--motion-accent-2) 34%, transparent),
-      rgba(255, 255, 255, 0.16)
-    );
-  background-size: 260% 260%, 100% 100%;
-  background-position:
-    50% 50%,
-    0 0;
-  mix-blend-mode: screen;
-  opacity: 0.78;
-  filter: contrast(1.12) saturate(1.4);
-  animation: figureMotionPrismSweep 4.8s ease-in-out infinite;
-}
-
-.figure-motion-foil .figure-motion-glare {
-  opacity: 0;
 }
 
 .figure-motion-foil .figure-motion-edge {
@@ -2067,19 +2063,14 @@ input[type="file"] {
   }
 }
 
-@keyframes figureMotionPrismSweep {
-  0%,
-  100% {
-    filter: contrast(1.08) saturate(1.28);
-  }
-  50% {
-    filter: contrast(1.16) saturate(1.48);
-  }
-}
-
 @media (max-width: 720px) {
   .game-panel {
     padding: 28px 16px;
+  }
+
+  .figure-motion-foil {
+    --motion-foil-texture-opacity-idle: var(--motion-foil-texture-opacity-idle-mobile);
+    --motion-foil-texture-opacity-active: var(--motion-foil-texture-opacity-active-mobile);
   }
 
   .figure-card {
@@ -2128,8 +2119,8 @@ input[type="file"] {
     transform: none !important;
   }
 
-  .figure-motion-prism {
-    opacity: 0.28 !important;
+  .figure-motion-edge-shine {
+    opacity: 0.18 !important;
   }
 
   .figure-motion-glare {
