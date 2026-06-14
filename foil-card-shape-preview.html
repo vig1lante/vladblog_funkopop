@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foil Card Shape Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page-bg: #090912;
+        --text: #f7f7fb;
+        --muted: rgba(247, 247, 251, 0.68);
+        --hairline: rgba(255, 255, 255, 0.14);
+        --panel: rgba(16, 16, 25, 0.82);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--text);
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.036) 1px, transparent 1px),
+          radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.18), transparent 30%),
+          radial-gradient(circle at 78% 8%, rgba(245, 196, 81, 0.12), transparent 28%),
+          radial-gradient(circle at 44% 64%, rgba(216, 246, 255, 0.07), transparent 24%),
+          linear-gradient(180deg, #10101a 0%, var(--page-bg) 52%, #07070d 100%);
+        background-size: 34px 34px, 34px 34px, auto, auto, auto, auto;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .page {
+        width: min(100% - 28px, 1500px);
+        margin: 0 auto;
+        padding: 36px 0 52px;
+      }
+
+      .page-header {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+
+      .brand-line {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.56);
+        font-size: 0.76rem;
+        font-weight: 780;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 4.2rem);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .intro {
+        max-width: 780px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.55;
+      }
+
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+        gap: 24px;
+        align-items: start;
+      }
+
+      .preview-option {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .option-title {
+        min-height: 74px;
+        display: grid;
+        gap: 5px;
+        align-content: end;
+      }
+
+      .option-title span {
+        width: fit-content;
+        border: 1px solid var(--hairline);
+        border-radius: 999px;
+        padding: 4px 9px;
+        color: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.055);
+        font-size: 0.72rem;
+        font-weight: 760;
+      }
+
+      .option-title h2 {
+        margin: 0;
+        font-size: 1.04rem;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .option-title p {
+        margin: 0;
+        color: rgba(247, 247, 251, 0.6);
+        font-size: 0.82rem;
+        line-height: 1.35;
+      }
+
+      .stage {
+        --stage-foil: url("foil_effects/1.PNG");
+        position: relative;
+        display: grid;
+        place-items: center;
+        min-height: 620px;
+        overflow: hidden;
+        isolation: isolate;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        padding: 22px 14px;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.044) 1px, transparent 1px),
+          radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--glow) 42%, transparent), transparent 38%),
+          radial-gradient(circle at 18% 88%, rgba(255, 255, 255, 0.07), transparent 28%),
+          rgba(255, 255, 255, 0.018);
+        background-size: 28px 28px, 28px 28px, auto, auto, auto;
+        perspective: 980px;
+      }
+
+      .preview-option:nth-child(2) .stage {
+        --stage-foil: url("foil_effects/2.PNG");
+      }
+
+      .preview-option:nth-child(3) .stage {
+        --stage-foil: url("foil_effects/3.PNG");
+      }
+
+      .preview-option:nth-child(4) .stage {
+        --stage-foil: url("foil_effects/1.PNG");
+      }
+
+      .preview-option:nth-child(5) .stage {
+        --stage-foil: url("foil_effects/2.PNG");
+      }
+
+      .foil-card {
+        --motion-card-scale: 1;
+        --motion-rotate-x: 2deg;
+        --motion-rotate-y: -2deg;
+        --motion-translate-x: 0px;
+        --motion-translate-y: 0px;
+        --foil-bg-x: 50%;
+        --foil-bg-y: 50%;
+        --foil-bg-shift-x: 0px;
+        --foil-bg-shift-y: 0px;
+        --foil-bg-scale: 1.12;
+        --card-radius: 40px;
+        --inner-radius: 20px;
+        --glass-fill: rgba(255, 255, 255, 0.085);
+        --glass-tint: color-mix(in srgb, var(--accent) 34%, transparent);
+        position: relative;
+        width: min(100%, 420px);
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        overflow: hidden;
+        isolation: isolate;
+        z-index: 1;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: var(--card-radius);
+        background:
+          radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.32), transparent 25%),
+          radial-gradient(circle at 82% 96%, color-mix(in srgb, var(--accent) 42%, transparent), transparent 35%),
+          radial-gradient(circle at 16% 72%, color-mix(in srgb, var(--accent-2) 28%, transparent), transparent 34%),
+          linear-gradient(138deg, rgba(255, 255, 255, 0.18), transparent 24% 62%, rgba(255, 255, 255, 0.075)),
+          linear-gradient(146deg, var(--glass-tint), color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.035)) 46%, color-mix(in srgb, var(--accent-2) 28%, transparent)),
+          var(--glass-fill);
+        -webkit-backdrop-filter: blur(8px) saturate(1.8) brightness(1.15) contrast(1.05);
+        backdrop-filter: blur(1px) url(#lg-filter) blur(2px) saturate(1.5) brightness(1.1);
+        box-shadow:
+          0 0 48px color-mix(in srgb, var(--glow) 92%, transparent),
+          0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+          inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.5),
+          inset 0 0 12px rgba(255, 255, 255, 0.2),
+          inset -10px -24px 46px rgba(0, 0, 0, 0.32),
+          0 8px 32px rgba(0, 0, 0, 0.2),
+          0 30px 70px rgba(0, 0, 0, 0.48);
+        cursor: grab;
+        transform:
+          translate3d(var(--motion-translate-x), var(--motion-translate-y), 0)
+          rotateX(var(--motion-rotate-x))
+          rotateY(var(--motion-rotate-y))
+          scale3d(var(--motion-card-scale), var(--motion-card-scale), 1);
+        transform-style: preserve-3d;
+        transform-origin: 50% 50%;
+        transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .foil-card.is-motion-active {
+        --motion-card-scale: 1.035;
+        cursor: grabbing;
+        transition-duration: 70ms;
+      }
+
+      .foil-card-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        border-radius: inherit;
+        background-image: var(--stage-foil);
+        background-position: var(--foil-bg-x) var(--foil-bg-y);
+        background-size: 138% auto;
+        filter: saturate(1.5) contrast(1.1) brightness(1.08);
+        mix-blend-mode: screen;
+        opacity: 0.3;
+        pointer-events: none;
+        transform:
+          translate3d(var(--foil-bg-shift-x), var(--foil-bg-shift-y), 0)
+          scale(var(--foil-bg-scale));
+        transform-origin: center;
+        transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background-position 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .foil-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        padding: var(--outer-frame-width, 8px);
+        border-radius: inherit;
+        background: var(--rim);
+        box-shadow:
+          0 0 24px color-mix(in srgb, var(--glow) 78%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.42),
+          inset 0 -12px 20px rgba(0, 0, 0, 0.22);
+        -webkit-mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask:
+          linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        pointer-events: none;
+      }
+
+      .foil-card::after {
+        content: "";
+        position: absolute;
+        inset: 8px;
+        z-index: 4;
+        border-radius: calc(var(--card-radius) - 10px);
+        background:
+          linear-gradient(122deg, rgba(255, 255, 255, 0.34), transparent 18% 56%, rgba(255, 255, 255, 0.08) 72%, transparent),
+          radial-gradient(ellipse at 28% 0%, rgba(255, 255, 255, 0.3), transparent 38%),
+          radial-gradient(circle at 78% 78%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 38%),
+          linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.12)), transparent 30%);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.62),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+          inset 0 -2px 0 rgba(0, 0, 0, 0.42),
+          inset 0 0 40px rgba(255, 255, 255, 0.09);
+        pointer-events: none;
+      }
+
+      .art-frame {
+        position: relative;
+        z-index: 2;
+        overflow: hidden;
+        border: var(--art-border, 3px) solid color-mix(in srgb, var(--accent) 82%, rgba(255, 255, 255, 0.32));
+        border-radius: var(--inner-radius);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 34%),
+          rgba(255, 255, 255, 0.08);
+        box-shadow:
+          0 16px 34px rgba(0, 0, 0, 0.34),
+          0 0 26px color-mix(in srgb, var(--glow) 56%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.44),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+        transform: translateZ(18px);
+      }
+
+      .art-frame::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: calc(var(--inner-radius) - 3px);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+          inset 0 -24px 36px rgba(0, 0, 0, 0.18);
+        pointer-events: none;
+      }
+
+      .art-frame img {
+        width: 100%;
+        aspect-ratio: 1;
+        display: block;
+        object-fit: cover;
+        -webkit-user-drag: none;
+      }
+
+      .card-body {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        justify-items: center;
+        gap: 9px;
+        padding: 1px 2px 2px;
+        transform: translateZ(24px);
+      }
+
+      .number {
+        color: color-mix(in srgb, var(--accent) 46%, #ffffff);
+        font-size: 2rem;
+        line-height: 1;
+        font-weight: 820;
+        text-shadow: 0 0 22px color-mix(in srgb, var(--glow) 100%, transparent);
+      }
+
+      .rarity-badge {
+        display: inline-flex;
+        min-height: 34px;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid color-mix(in srgb, var(--accent) 68%, rgba(255, 255, 255, 0.28));
+        border-radius: var(--badge-radius, 16px);
+        padding: 0 13px 0 9px;
+        color: var(--badge-text, #161821);
+        background: var(--badge-bg);
+        box-shadow:
+          0 0 24px color-mix(in srgb, var(--glow) 68%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.38),
+          inset 0 -12px 22px rgba(0, 0, 0, 0.16);
+        font-size: 0.76rem;
+        font-weight: 860;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .badge-icon {
+        width: 19px;
+        height: 19px;
+        flex: 0 0 19px;
+        border-radius: var(--icon-radius, 50%);
+        background: var(--icon-bg);
+        clip-path: var(--icon-shape, none);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--glow) 88%, transparent);
+      }
+
+      .details {
+        width: 100%;
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0 3px;
+      }
+
+      .details-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        padding-top: 7px;
+      }
+
+      .details dt,
+      .details dd {
+        margin: 0;
+        font-size: 0.78rem;
+      }
+
+      .details dt {
+        color: rgba(255, 255, 255, 0.48);
+      }
+
+      .details dd {
+        color: rgba(255, 255, 255, 0.82);
+        font-weight: 720;
+        text-align: right;
+      }
+
+      .variant-relic {
+        --accent: #f5c451;
+        --accent-2: #7c5200;
+        --glass-tint: rgba(245, 196, 81, 0.16);
+        --glow: rgba(212, 175, 55, 0.48);
+        --rim:
+          linear-gradient(135deg, rgba(255, 246, 194, 0.72), rgba(124, 82, 0, 0.72) 33%, rgba(245, 196, 81, 0.76) 68%, rgba(55, 35, 0, 0.84)),
+          radial-gradient(circle at 28% 12%, rgba(255, 255, 255, 0.22), transparent 26%);
+        --badge-bg:
+          linear-gradient(135deg, #fff7c7, #d4af37 52%, #8a6100);
+        --icon-bg: linear-gradient(135deg, #fff7c7, #f5c451 52%, #7c5200);
+        --icon-radius: 0;
+        --icon-shape: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+      }
+
+      .variant-prism {
+        --card-radius: 24px;
+        --inner-radius: 18px;
+        --accent: #a855f7;
+        --accent-2: #f472ff;
+        --glass-tint: rgba(168, 85, 247, 0.18);
+        --glow: rgba(139, 92, 246, 0.48);
+        --rim:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(139, 92, 246, 0.78) 22%, rgba(244, 114, 255, 0.72) 48%, rgba(216, 246, 255, 0.42) 68%, rgba(76, 29, 149, 0.9)),
+          radial-gradient(circle at 50% 0%, rgba(244, 114, 255, 0.2), transparent 34%);
+        --badge-bg:
+          linear-gradient(135deg, #ffffff, #e9d5ff 24%, #8b5cf6 58%, #f472ff);
+        --icon-bg: linear-gradient(135deg, #ffffff, #e9d5ff, #8b5cf6 62%, #f472ff);
+        --icon-shape: polygon(50% 4%, 96% 92%, 4% 92%);
+        clip-path: polygon(0 18px, 18px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 18px), calc(100% - 18px) 100%, 18px 100%, 0 calc(100% - 18px));
+      }
+
+      .variant-prism::before,
+      .variant-prism::after {
+        border-radius: 18px;
+      }
+
+      .variant-slab {
+        --card-radius: 20px;
+        --inner-radius: 14px;
+        --outer-line: 3px;
+        --art-border: 4px;
+        --accent: #f97316;
+        --accent-2: #7f1d1d;
+        --glass-tint: rgba(249, 115, 22, 0.17);
+        --glow: rgba(239, 45, 45, 0.46);
+        --rim:
+          linear-gradient(135deg, rgba(255, 180, 162, 0.74), rgba(127, 29, 29, 0.94) 34%, rgba(249, 115, 22, 0.72) 67%, rgba(34, 8, 8, 0.94)),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.13), transparent 24% 76%, rgba(255, 255, 255, 0.09));
+        --badge-radius: 10px;
+        --badge-bg:
+          linear-gradient(135deg, #ffe4e6, #ef2d2d 48%, #7f1d1d);
+        --icon-bg: linear-gradient(135deg, #ffe4e6, #ff7a2f, #7f1d1d);
+        --icon-radius: 0;
+        --icon-shape: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        border-width: 2px;
+      }
+
+      .variant-slab .card-body {
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        border-radius: 13px;
+        padding: 9px 8px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.12)),
+          rgba(12, 10, 13, 0.34);
+      }
+
+      .variant-vault {
+        --card-radius: 24px;
+        --inner-radius: 18px;
+        --outer-line: 3px;
+        --accent: #1d4ed8;
+        --accent-2: #020a3a;
+        --glass-tint: rgba(29, 78, 216, 0.2);
+        --glow: rgba(29, 78, 216, 0.6);
+        --rim:
+          linear-gradient(135deg, rgba(219, 234, 254, 0.16), rgba(29, 78, 216, 0.86) 28%, rgba(2, 10, 58, 0.96) 54%, rgba(29, 78, 216, 0.72) 78%, rgba(1, 4, 20, 0.98)),
+          radial-gradient(circle at 50% 0%, rgba(29, 78, 216, 0.3), transparent 34%);
+        --badge-bg:
+          linear-gradient(135deg, #dbeafe, #1d4ed8 36%, #020a3a 82%);
+        --badge-text: #eaf2ff;
+        --icon-bg: linear-gradient(135deg, #dbeafe, #1d4ed8 42%, #020a3a);
+        --icon-shape: polygon(50% 0%, 62% 32%, 98% 32%, 69% 53%, 80% 92%, 50% 68%, 20% 92%, 31% 53%, 2% 32%, 38% 32%);
+      }
+
+      .variant-vault .art-frame {
+        box-shadow:
+          0 16px 36px rgba(0, 0, 0, 0.42),
+          0 0 32px rgba(29, 78, 216, 0.38),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .variant-soft {
+        --card-radius: 32px;
+        --inner-radius: 24px;
+        --accent: #f1d8ff;
+        --accent-2: #d8f6ff;
+        --glass-tint: rgba(241, 216, 255, 0.2);
+        --glow: rgba(255, 255, 255, 0.46);
+        --rim:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(216, 246, 255, 0.48) 28%, rgba(255, 202, 243, 0.52) 58%, rgba(255, 242, 176, 0.44) 82%, rgba(255, 255, 255, 0.56)),
+          radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.24), transparent 32%);
+        --badge-bg:
+          linear-gradient(135deg, #ffffff, #d8f6ff 34%, #ffcaf3 72%, #fff2b0);
+        --icon-bg: linear-gradient(135deg, #ffffff, #d8f6ff, #ffcaf3, #fff2b0);
+        --icon-shape: polygon(50% 0%, 58% 20%, 78% 10%, 72% 32%, 96% 38%, 75% 50%, 92% 68%, 68% 66%, 62% 92%, 50% 72%, 35% 92%, 32% 66%, 8% 68%, 25% 50%, 4% 38%, 28% 32%, 22% 10%, 42% 20%);
+      }
+
+      .variant-soft .number {
+        color: #fff;
+      }
+
+      @media (max-width: 680px) {
+        .page {
+          width: min(100% - 20px, 420px);
+          padding-top: 28px;
+        }
+
+        .preview-grid {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+
+        .option-title {
+          min-height: auto;
+        }
+
+        .stage {
+          min-height: auto;
+          padding: 18px 10px;
+        }
+
+        .foil-card {
+          width: min(100%, 332px);
+        }
+
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .foil-card,
+        .foil-card.is-motion-active {
+          --motion-card-scale: 1;
+          --motion-rotate-x: 0deg;
+          --motion-rotate-y: 0deg;
+          --motion-translate-x: 0px;
+          --motion-translate-y: 0px;
+          --foil-bg-x: 50%;
+          --foil-bg-y: 50%;
+          --foil-bg-shift-x: 0px;
+          --foil-bg-shift-y: 0px;
+          --foil-bg-scale: 1.12;
+          transition: none;
+        }
+
+        .foil-card-bg {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="lg-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage x="0" y="0" width="420" height="280" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22420%22%20height%3D%22280%22%20viewBox%3D%220%200%20420%20280%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22Y%22%20x1%3D%220%22%20x2%3D%220%22%20y1%3D%223%25%22%20y2%3D%2297%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230F0%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23000%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22X%22%20x1%3D%222%25%22%20x2%3D%2298%25%22%20y1%3D%220%22%20y2%3D%220%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23F00%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23000%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22420%22%20height%3D%22280%22%20fill%3D%22%23808080%22%2F%3E%3Cg%20filter%3D%22blur(2px)%22%3E%3Crect%20width%3D%22420%22%20height%3D%22280%22%20fill%3D%22%23000080%22%2F%3E%3Crect%20width%3D%22420%22%20height%3D%22280%22%20fill%3D%22url(%23Y)%22%20style%3D%22mix-blend-mode%3Ascreen%22%2F%3E%3Crect%20width%3D%22420%22%20height%3D%22280%22%20fill%3D%22url(%23X)%22%20style%3D%22mix-blend-mode%3Ascreen%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%2214%22%20width%3D%22392%22%20height%3D%22252%22%20rx%3D%2226%22%20ry%3D%2226%22%20fill%3D%22%23808080%22%20filter%3D%22blur(14px)%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E" result="displacementMap" />
+        <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="144" xChannelSelector="R" yChannelSelector="G" />
+        <feColorMatrix type="matrix" result="displacedR" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+        <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="142" xChannelSelector="R" yChannelSelector="G" />
+        <feColorMatrix type="matrix" result="displacedG" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+        <feDisplacementMap in="SourceGraphic" in2="displacementMap" scale="140" xChannelSelector="R" yChannelSelector="G" />
+        <feColorMatrix type="matrix" result="displacedB" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        <feBlend in="displacedR" in2="displacedG" mode="screen" result="rg" />
+        <feBlend in="rg" in2="displacedB" mode="screen" />
+      </filter>
+    </svg>
+    <div class="page">
+      <div class="page-header">
+        <p class="brand-line">VLADBLOG COLLECTIBLES</p>
+        <h1>Формы финальной foil-карточки</h1>
+        <p class="intro">
+          Статичные HTML/CSS-варианты для выбора формы: большая рамка по краям
+          карточки, узкая рамка вокруг изображения, стеклянная поверхность,
+          badge редкости и внешняя подсветка.
+        </p>
+      </div>
+
+      <div class="preview-grid" role="main" aria-label="Варианты формы foil-карточки">
+        <div class="preview-option">
+          <div class="option-title">
+            <span>Вариант 1</span>
+            <h2>Clean Glass Relic</h2>
+            <p>Чистая стеклянная форма, минимум декора, золото редкости.</p>
+          </div>
+          <div class="stage">
+            <div class="foil-card variant-relic" aria-label="Clean Glass Relic">
+              <span class="foil-card-bg" aria-hidden="true"></span>
+              <div class="art-frame">
+                <img
+                  src="project_data/media/generated-figures/1474d88a-40a4-482c-bf4d-b3e1a9aa98fe_844d5e20-f48a-4484-b56e-c5773566c6f8_foil.png"
+                  alt="Пример сгенерированной foil-фигурки"
+                />
+              </div>
+              <div class="card-body">
+                <div class="number">#0001</div>
+                <div class="rarity-badge">
+                  <span class="badge-icon" aria-hidden="true"></span>
+                  <span>Foil Legendary</span>
+                </div>
+                <dl class="details">
+                  <div class="details-row">
+                    <dt>Модель</dt>
+                    <dd>@vladblog</dd>
+                  </div>
+                  <div class="details-row">
+                    <dt>Редкость</dt>
+                    <dd>1%</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-option">
+          <div class="option-title">
+            <span>Вариант 2</span>
+            <h2>Static Prism Edge</h2>
+            <p>Срезанные углы и замороженная prism-рамка без движения.</p>
+          </div>
+          <div class="stage">
+            <div class="foil-card variant-prism" aria-label="Static Prism Edge">
+              <span class="foil-card-bg" aria-hidden="true"></span>
+              <div class="art-frame">
+                <img
+                  src="project_data/media/generated-figures/a5784250-6981-44c0-9326-c20c88f1ab45_2b3b9088-3e12-46fb-89e2-f232cfc5d3dc_foil.png"
+                  alt="Пример сгенерированной foil-фигурки"
+                />
+              </div>
+              <div class="card-body">
+                <div class="number">#0002</div>
+                <div class="rarity-badge">
+                  <span class="badge-icon" aria-hidden="true"></span>
+                  <span>Foil Epic</span>
+                </div>
+                <dl class="details">
+                  <div class="details-row">
+                    <dt>Модель</dt>
+                    <dd>@vladblog</dd>
+                  </div>
+                  <div class="details-row">
+                    <dt>Редкость</dt>
+                    <dd>5%</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-option">
+          <div class="option-title">
+            <span>Вариант 3</span>
+            <h2>Collector Slab</h2>
+            <p>Плотная коллекционная капсула с сертификационным низом.</p>
+          </div>
+          <div class="stage">
+            <div class="foil-card variant-slab" aria-label="Collector Slab">
+              <span class="foil-card-bg" aria-hidden="true"></span>
+              <div class="art-frame">
+                <img
+                  src="project_data/media/generated-figures/ee10e3fc-80b8-4a72-ac7f-d9309209431c_4abbd8ca-56a2-4730-b213-8b1153afd118_foil.png"
+                  alt="Пример сгенерированной foil-фигурки"
+                />
+              </div>
+              <div class="card-body">
+                <div class="number">#0003</div>
+                <div class="rarity-badge">
+                  <span class="badge-icon" aria-hidden="true"></span>
+                  <span>Foil Mythic</span>
+                </div>
+                <dl class="details">
+                  <div class="details-row">
+                    <dt>Модель</dt>
+                    <dd>@vladblog</dd>
+                  </div>
+                  <div class="details-row">
+                    <dt>Редкость</dt>
+                    <dd>2.5%</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-option">
+          <div class="option-title">
+            <span>Вариант 4</span>
+            <h2>Dark Neon Vault</h2>
+            <p>Темная витрина Founder Legendary с холодной синей рамой.</p>
+          </div>
+          <div class="stage">
+            <div class="foil-card variant-vault" aria-label="Dark Neon Vault">
+              <span class="foil-card-bg" aria-hidden="true"></span>
+              <div class="art-frame">
+                <img
+                  src="project_data/media/generated-figures/1474d88a-40a4-482c-bf4d-b3e1a9aa98fe_844d5e20-f48a-4484-b56e-c5773566c6f8_foil.png"
+                  alt="Пример сгенерированной foil-фигурки"
+                />
+              </div>
+              <div class="card-body">
+                <div class="number">#0004</div>
+                <div class="rarity-badge">
+                  <span class="badge-icon" aria-hidden="true"></span>
+                  <span>Foil Founder Legendary</span>
+                </div>
+                <dl class="details">
+                  <div class="details-row">
+                    <dt>Модель</dt>
+                    <dd>@vladblog</dd>
+                  </div>
+                  <div class="details-row">
+                    <dt>Редкость</dt>
+                    <dd>0.5%</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-option">
+          <div class="option-title">
+            <span>Вариант 5</span>
+            <h2>Soft Holo Glass</h2>
+            <p>Более мягкое стекло: светлая foil-рамка и воздушная форма.</p>
+          </div>
+          <div class="stage">
+            <div class="foil-card variant-soft" aria-label="Soft Holo Glass">
+              <span class="foil-card-bg" aria-hidden="true"></span>
+              <div class="art-frame">
+                <img
+                  src="project_data/media/generated-figures/a5784250-6981-44c0-9326-c20c88f1ab45_2b3b9088-3e12-46fb-89e2-f232cfc5d3dc_foil.png"
+                  alt="Пример сгенерированной foil-фигурки"
+                />
+              </div>
+              <div class="card-body">
+                <div class="number">#0005</div>
+                <div class="rarity-badge">
+                  <span class="badge-icon" aria-hidden="true"></span>
+                  <span>Foil</span>
+                </div>
+                <dl class="details">
+                  <div class="details-row">
+                    <dt>Модель</dt>
+                    <dd>@vladblog</dd>
+                  </div>
+                  <div class="details-row">
+                    <dt>Редкость</dt>
+                    <dd>Preview</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const motionVariableNames = [
+          "--motion-rotate-x",
+          "--motion-rotate-y",
+          "--motion-translate-x",
+          "--motion-translate-y",
+          "--foil-bg-x",
+          "--foil-bg-y",
+          "--foil-bg-shift-x",
+          "--foil-bg-shift-y",
+          "--foil-bg-scale",
+        ];
+        const reduceMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        );
+        let frameId = null;
+        let pendingMotion = null;
+
+        function clamp(value, min, max) {
+          return Math.min(Math.max(value, min), max);
+        }
+
+        function resetMotion(card) {
+          card.classList.remove("is-motion-active");
+          for (const variableName of motionVariableNames) {
+            card.style.removeProperty(variableName);
+          }
+        }
+
+        function applyMotion({ card, normalizedX, normalizedY }) {
+          const axisX = normalizedX * 2 - 1;
+          const axisY = normalizedY * 2 - 1;
+          const tilt = 16;
+          const shift = 7;
+
+          card.style.setProperty(
+            "--motion-rotate-x",
+            `${(-axisY * tilt).toFixed(2)}deg`,
+          );
+          card.style.setProperty(
+            "--motion-rotate-y",
+            `${(axisX * tilt).toFixed(2)}deg`,
+          );
+          card.style.setProperty(
+            "--motion-translate-x",
+            `${(axisX * shift).toFixed(2)}px`,
+          );
+          card.style.setProperty(
+            "--motion-translate-y",
+            `${(axisY * shift).toFixed(2)}px`,
+          );
+          card.style.setProperty(
+            "--foil-bg-x",
+            `${(50 - axisX * 24).toFixed(2)}%`,
+          );
+          card.style.setProperty(
+            "--foil-bg-y",
+            `${(50 - axisY * 18).toFixed(2)}%`,
+          );
+          card.style.setProperty(
+            "--foil-bg-shift-x",
+            `${(-axisX * 18).toFixed(2)}px`,
+          );
+          card.style.setProperty(
+            "--foil-bg-shift-y",
+            `${(-axisY * 14).toFixed(2)}px`,
+          );
+          card.style.setProperty(
+            "--foil-bg-scale",
+            `${(1.12 + Math.hypot(axisX, axisY) * 0.035).toFixed(3)}`,
+          );
+        }
+
+        function scheduleMotion(event) {
+          if (reduceMotion.matches) {
+            return;
+          }
+
+          const card = event.currentTarget;
+          const rect = card.getBoundingClientRect();
+          const normalizedX = clamp(
+            (event.clientX - rect.left) / Math.max(rect.width, 1),
+            0,
+            1,
+          );
+          const normalizedY = clamp(
+            (event.clientY - rect.top) / Math.max(rect.height, 1),
+            0,
+            1,
+          );
+
+          pendingMotion = { card, normalizedX, normalizedY };
+
+          if (frameId !== null) {
+            return;
+          }
+
+          frameId = window.requestAnimationFrame(() => {
+            frameId = null;
+
+            if (!pendingMotion) {
+              return;
+            }
+
+            applyMotion(pendingMotion);
+          });
+        }
+
+        document.querySelectorAll(".foil-card").forEach((card) => {
+          card.addEventListener("pointerenter", (event) => {
+            if (event.pointerType === "touch" || reduceMotion.matches) {
+              return;
+            }
+
+            card.classList.add("is-motion-active");
+            scheduleMotion(event);
+          });
+          card.addEventListener("pointermove", (event) => {
+            if (event.pointerType === "touch") {
+              return;
+            }
+
+            scheduleMotion(event);
+          });
+          card.addEventListener("pointerleave", () => {
+            pendingMotion = null;
+
+            if (frameId !== null) {
+              window.cancelAnimationFrame(frameId);
+              frameId = null;
+            }
+
+            resetMotion(card);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

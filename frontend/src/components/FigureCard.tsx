@@ -1,6 +1,6 @@
 import { type CSSProperties, useState } from "react";
 
-import { AnimatedFoilFrame } from "./final/AnimatedFoilFrame";
+import { StaticFoilFrame } from "./final/StaticFoilFrame";
 import { getFoilFramePalette } from "./final/foilFramePalettes";
 import { RarityBadge } from "./RarityBadge";
 import { getApprovedRarityStyle } from "../lib/approvedRarityStyles";
@@ -23,10 +23,16 @@ export function FigureCard({
   const showImage = Boolean(figure.image_url && !imageFailed);
   const rarityStyle = getApprovedRarityStyle(figure.rarity);
   const foilFramePalette = getFoilFramePalette(figure.rarity);
+  const isFoilRarity = rarityStyle.power.startsWith("foil");
   const cardStyle = {
     "--style-accent": rarityStyle.accent,
     "--style-accent-2": rarityStyle.accent2,
     "--style-glow": rarityStyle.glow,
+    "--foil-card-texture-url": rarityStyle.foilTextureUrl
+      ? `url("${rarityStyle.foilTextureUrl}")`
+      : undefined,
+    "--foil-card-tint-opacity": rarityStyle.foilTintOpacity,
+    "--motion-foil-hue": `${rarityStyle.foilHue}deg`,
     "--foil-card-frame-primary": foilFramePalette?.primary,
     "--foil-card-frame-secondary": foilFramePalette?.secondary,
     "--foil-card-frame-accent": foilFramePalette?.accent,
@@ -38,11 +44,14 @@ export function FigureCard({
       className={`figure-card figure-rarity-card rarity-style-${rarityStyle.shape} rarity-power-${rarityStyle.power}`}
       style={cardStyle}
     >
+      {isFoilRarity && rarityStyle.foilTextureUrl && (
+        <span className="figure-card-foil-bg" aria-hidden="true" />
+      )}
       {foilFramePalette && showImage && (
         <span className="figure-card-foil-frame" aria-hidden="true" />
       )}
       <div className="figure-image-frame">
-        <AnimatedFoilFrame active={showImage} rarity={figure.rarity}>
+        <StaticFoilFrame active={showImage} rarity={figure.rarity}>
           <div className="figure-image-stage">
             {showImage ? (
               <img
@@ -61,7 +70,7 @@ export function FigureCard({
               </div>
             )}
           </div>
-        </AnimatedFoilFrame>
+        </StaticFoilFrame>
       </div>
       <div className="figure-card-body">
         <div className="figure-number">{figure.display_number}</div>

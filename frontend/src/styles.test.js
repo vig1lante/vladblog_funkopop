@@ -285,7 +285,8 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".final-rarity-style-grid");
     expect(styles).not.toContain(".rarity-style-card");
     expect(styles).not.toContain(".rarity-style-token");
-    expect(figureCard).not.toContain("const isFoilRarity");
+    expect(figureCard).toContain("const isFoilRarity");
+    expect(figureCard).toContain("figure-card-foil-bg");
     expect(figureCard).not.toContain("figure-foil-underlay");
     expect(myFigurePage).toContain("FigureMotionCard");
     expect(myFigurePage).toContain("<FigureMotionCard");
@@ -303,38 +304,38 @@ describe("frontend styles", () => {
     expect(figureMotionCard).toContain("setPointerCapture");
     expect(figureMotionCard).toContain("onPointerCancel");
     expect(figureMotionCard).toContain('className={`figure-motion-card ${isFoil ? "figure-motion-foil" : "figure-motion-normal"}');
-    expect(figureMotionCard).toContain("figure-motion-foil-effects");
-    expect(figureMotionCard).toContain("figure-motion-foil-texture");
-    expect(figureMotionCard).toContain("figure-motion-edge-shine");
-    expect(figureMotionCard).toContain("--motion-texture-x");
-    expect(figureMotionCard).toContain("--motion-texture-y");
-    expect(figureMotionCard).toContain("--motion-texture-scale");
+    expect(figureMotionCard).not.toContain("figure-motion-foil-effects");
+    expect(figureMotionCard).not.toContain("figure-motion-foil-texture");
+    expect(figureMotionCard).not.toContain("figure-motion-edge-shine");
+    expect(figureMotionCard).toContain("--foil-bg-x");
+    expect(figureMotionCard).toContain("--foil-bg-y");
+    expect(figureMotionCard).toContain("--foil-bg-shift-x");
+    expect(figureMotionCard).toContain("--foil-bg-shift-y");
+    expect(figureMotionCard).toContain("--foil-bg-scale");
     expect(styles).toContain(".figure-motion-card");
     expect(styles).toContain(".figure-motion-normal");
     expect(styles).toContain(".figure-motion-foil");
-    expect(styles).toContain(".figure-motion-foil-effects");
-    expect(styles).toContain(".figure-motion-foil-texture");
-    expect(styles).toContain(".figure-motion-edge-shine");
-    expect(styles).toContain(".figure-motion-glare");
+    expect(styles).not.toContain(".figure-motion-foil-effects");
+    expect(styles).not.toContain(".figure-motion-foil-texture");
+    expect(styles).not.toContain(".figure-motion-edge-shine");
+    expect(styles).not.toContain(".figure-motion-glare");
     expect(styles).toContain(".figure-motion-shadow");
     expect(styles).toContain("--motion-rotate-x");
     expect(styles).toContain("--motion-card-scale");
-    expect(styles).toContain("--motion-texture-x");
-    expect(styles).toContain("--motion-texture-y");
-    expect(styles).toContain("--motion-texture-scale");
-    expect(styles).toContain("--motion-glare-x");
-    expect(styles).toContain("--motion-glare-y");
-    expect(styles).toContain("--motion-foil-x");
-    expect(styles).toContain("--motion-foil-y");
+    expect(styles).toContain("--foil-bg-x");
+    expect(styles).toContain("--foil-bg-y");
+    expect(styles).toContain("--foil-bg-shift-x");
+    expect(styles).toContain("--foil-bg-shift-y");
+    expect(styles).toContain("--foil-bg-scale");
     expect(styles).toContain("--motion-foil-hue");
     expect(styles).not.toContain("figureMotionPrismSweep");
     expect(figureMotionCard).toContain('aria-hidden="true"');
     expect(styles).not.toContain(".figure-foil-underlay");
     expect(styles).not.toContain("mix-blend-mode: overlay");
     expect(styles).not.toContain("mix-blend-mode: color");
-    expect(styles).toContain("mix-blend-mode: var(--motion-foil-blend-mode, screen)");
-    expect(styles).toContain("filter: saturate(var(--motion-foil-saturation, 1.18)) contrast(var(--motion-foil-contrast, 1.06)) hue-rotate(var(--motion-foil-hue, 0deg))");
-    expect(styles).toContain("background-position: var(--motion-foil-x) var(--motion-foil-y)");
+    expect(styles).toContain("mix-blend-mode: screen");
+    expect(styles).toContain("filter: saturate(var(--motion-foil-saturation, 1.18)) contrast(var(--motion-foil-contrast, 1.06)) brightness(1.08) hue-rotate(var(--motion-foil-hue, 0deg))");
+    expect(styles).toContain("background-position: var(--foil-bg-x) var(--foil-bg-y)");
 
     for (const token of [
       'approvedEpicStyle',
@@ -406,15 +407,14 @@ describe("frontend styles", () => {
       '.figure-motion-card',
       '.figure-motion-foil',
       '.figure-motion-normal',
-      '.figure-motion-edge-shine',
-      '.figure-motion-foil-texture',
+      '.figure-card-foil-bg',
+      '.figure-card-foil-frame',
+      '.static-foil-frame-shell',
       'margin-inline: auto',
       'epicBadgeAura',
       'mythicBadgeEmber',
       'legendaryBadgeSweep',
       'founderTokenSeal',
-      'foilSparkle',
-      'foilGlow',
     ]) {
       expect(styles).toContain(token);
     }
@@ -539,7 +539,7 @@ describe("frontend styles", () => {
 
   it("loads final foil effect settings from the root config", () => {
     const foilTextureRule = styles.match(
-      /\.figure-motion-foil \.figure-motion-foil-texture\s*\{([^}]*)\}/,
+      /\.figure-card-foil-bg\s*\{([^}]*)\}/,
     )?.[1] ?? "";
     const activeMotionRule = styles.match(
       /\.figure-motion-card\.figure-motion-foil\.is-motion-active\s*\{([^}]*)\}/,
@@ -555,7 +555,6 @@ describe("frontend styles", () => {
     expect(figureMotionCard).toContain("const foilEffects = appConfig.foilEffects");
     expect(figureMotionCard).toContain("foilEffects.textureOpacityIdle");
     expect(figureMotionCard).toContain("--motion-foil-texture-opacity-active");
-    expect(figureMotionCard).toContain("--motion-foil-glare-opacity-active");
     expect(figureMotionCard).toContain("--motion-foil-texture-opacity");
     expect(foilTextureRule).toContain(
       "opacity: var(--motion-foil-texture-opacity",
@@ -563,36 +562,33 @@ describe("frontend styles", () => {
     expect(activeMotionRule).toContain(
       "--motion-foil-texture-opacity: var(--motion-foil-texture-opacity-active)",
     );
-    expect(activeMotionRule).toContain(
-      "--motion-foil-glare-opacity: var(--motion-foil-glare-opacity-active)",
-    );
     expect(foilTextureRule).not.toMatch(/opacity:\s*[0-9.]+/);
   });
 
-  it("clips foil texture corners and masks foil away from card details", () => {
+  it("clips the slab foil texture inside the card without external overlay layers", () => {
     const foilTextureBaseRule = styles.match(
-      /\.figure-motion-foil-texture\s*\{([^}]*)\}/,
+      /\.figure-card-foil-bg\s*\{([^}]*)\}/,
     )?.[1] ?? "";
-    const glareRule = styles.match(/\.figure-motion-glare\s*\{([^}]*)\}/)?.[1] ?? "";
-    const edgeShineRule = styles.match(
-      /\.figure-motion-edge-shine\s*\{([^}]*)\}/,
+    const foilTexturePaintRule = styles.match(
+      /\.figure-card-foil-bg::before\s*\{([^}]*)\}/,
     )?.[1] ?? "";
 
-    expect(figureMotionCard).toContain("figure-motion-foil-effects");
-    expect(foilTextureBaseRule).toContain("clip-path: inset(0 round 24px)");
+    expect(figureMotionCard).not.toContain("figure-motion-foil-effects");
+    expect(figureCard).toContain("figure-card-foil-bg");
+    expect(foilTextureBaseRule).toContain("border-radius: inherit");
+    expect(foilTextureBaseRule).toContain("overflow: hidden");
+    expect(foilTextureBaseRule).toContain("clip-path: inset(0 round var(--figure-card-radius))");
     expect(foilTextureBaseRule).toContain("contain: paint");
-    expect(styles).toContain("--motion-foil-readable-mask");
-    expect(foilTextureBaseRule).toContain("-webkit-mask-image: var(--motion-foil-readable-mask)");
-    expect(foilTextureBaseRule).toContain("mask-image: var(--motion-foil-readable-mask)");
-    expect(glareRule).toContain("radial-gradient");
-    expect(glareRule).toContain("var(--motion-glare-x) var(--motion-glare-y)");
-    expect(edgeShineRule).toContain("-webkit-mask-image: radial-gradient");
-    expect(edgeShineRule).toContain("mask-image: radial-gradient");
+    expect(foilTexturePaintRule).toContain("background-image: var(--foil-card-texture-url)");
+    expect(foilTexturePaintRule).toContain("background-position: var(--foil-bg-x) var(--foil-bg-y)");
+    expect(foilTexturePaintRule).toContain("translate3d(var(--foil-bg-shift-x");
+    expect(styles).not.toContain("--motion-foil-readable-mask");
     expect(styles).not.toContain(".figure-motion-foil .figure-motion-foil-texture,");
   });
 
   it("does not mount hidden prism and foil-only paint layers on normal final cards", () => {
-    expect(figureMotionCard).toContain("{isFoil && (");
+    expect(figureMotionCard).not.toContain("{isFoil && (");
+    expect(figureCard).toContain("{isFoilRarity && rarityStyle.foilTextureUrl &&");
     expect(figureMotionCard).not.toContain(
       '<span className="figure-motion-prism" aria-hidden="true" />',
     );
@@ -602,53 +598,57 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".figure-motion-normal .figure-motion-edge-shine");
   });
 
-  it("keeps the animated foil frame inside the final card around the generated image", () => {
+  it("keeps a static foil frame inside the final card around the generated image", () => {
     expect(myFigurePage).not.toContain("AnimatedFoilFrame");
-    expect(figureCard).toContain("AnimatedFoilFrame");
-    expect(figureCard).toContain("<AnimatedFoilFrame");
+    expect(figureCard).not.toContain("AnimatedFoilFrame");
+    expect(figureCard).toContain("StaticFoilFrame");
+    expect(figureCard).toContain("<StaticFoilFrame");
     expect(figureCard).toContain("active={showImage}");
     expect(figureCard).toContain("rarity={figure.rarity}");
     expect(figureCard).toContain("figure-image-frame");
-    expect(figureCard.indexOf("<AnimatedFoilFrame")).toBeLessThan(
+    expect(figureCard.indexOf("<StaticFoilFrame")).toBeLessThan(
       figureCard.indexOf('className="figure-image-stage"'),
     );
     expect(styles).toContain(".figure-image-frame");
-    expect(styles).toContain(".figure-image-frame .animated-foil-frame-shell");
-    expect(styles).toContain(".figure-image-frame .animated-foil-frame-glow");
-    expect(styles).toContain(".animated-foil-frame-border::before");
-    expect(styles).toContain("animation: foilFrameSpin");
+    expect(styles).toContain(".figure-image-frame .static-foil-frame-shell");
+    expect(styles).toContain(".figure-image-frame .static-foil-frame-glow");
+    expect(styles).toContain(".static-foil-frame-border");
+    expect(styles).not.toContain("animation: foilFrameSpin");
   });
 
-  it("adds a foil-only animated frame inside the final card surface", () => {
+  it("adds foil-only static slab frames inside the final card surface", () => {
     expect(figureCard).toContain("getFoilFramePalette");
     expect(figureCard).toContain("foilFramePalette");
     expect(figureCard).toContain('"--foil-card-frame-primary"');
+    expect(figureCard).toContain('"--foil-card-texture-url"');
     expect(figureCard).toContain("figure-card-foil-frame");
     expect(figureCard).toContain("{foilFramePalette && showImage &&");
     expect(styles).toContain(".figure-card-foil-frame");
-    expect(styles).toContain(".figure-card-foil-frame::before");
-    expect(styles).toContain(".figure-card-foil-frame::after");
     expect(styles).toContain("var(--foil-card-frame-primary)");
     expect(styles).toContain("var(--foil-card-frame-glow)");
+    expect(styles).not.toContain("mask-composite: exclude");
+    expect(styles).not.toContain("-webkit-mask-composite: xor");
+    expect(styles).not.toContain(".figure-card-foil-frame::before");
+    expect(styles).not.toContain(".figure-card-foil-frame::after");
   });
 
-  it("paints pointer-driven foil glare without React state churn", () => {
+  it("paints pointer-driven slab foil background without React state churn", () => {
     expect(figureMotionCard).not.toContain("TEXTURE_UPDATE_INTERVAL_MS");
     expect(figureMotionCard).not.toContain("lastTextureUpdateAtRef");
     expect(figureMotionCard).not.toContain("shouldUpdateTexture");
     expect(figureMotionCard).not.toContain("updateTexture");
-    expect(figureMotionCard).toContain("--motion-glare-x");
-    expect(figureMotionCard).toContain("--motion-glare-y");
-    expect(figureMotionCard).toContain("--motion-foil-x");
-    expect(figureMotionCard).toContain("--motion-foil-y");
+    expect(figureMotionCard).toContain("--foil-bg-x");
+    expect(figureMotionCard).toContain("--foil-bg-y");
+    expect(figureMotionCard).toContain("--foil-bg-shift-x");
+    expect(figureMotionCard).toContain("--foil-bg-shift-y");
     expect(figureMotionCard).not.toContain("--motion-angle");
-    expect(styles).toContain("--motion-glare-x");
-    expect(styles).toContain("--motion-glare-y");
-    expect(styles).toContain("--motion-foil-x");
-    expect(styles).toContain("--motion-foil-y");
+    expect(styles).toContain("--foil-bg-x");
+    expect(styles).toContain("--foil-bg-y");
+    expect(styles).toContain("--foil-bg-shift-x");
+    expect(styles).toContain("--foil-bg-shift-y");
     expect(styles).not.toContain("--motion-angle");
-    expect(styles).toContain("var(--motion-glare-x)");
-    expect(styles).toContain("var(--motion-glare-y)");
+    expect(styles).toContain("var(--foil-bg-x)");
+    expect(styles).toContain("var(--foil-bg-y)");
     expect(figureMotionCard).not.toContain('element.style.setProperty(\n    "--motion-card-scale"');
     expect(figureMotionCard).not.toContain('element.style.setProperty(\n      "--motion-foil-hue"');
     expect(figureMotionCard).not.toContain('"--motion-foil-hue",');
@@ -660,21 +660,21 @@ describe("frontend styles", () => {
     expect(figureMotionCard).toContain("figure-motion-normal");
     expect(figureMotionCard).toContain("figure-motion-foil");
     expect(figureMotionCard).toContain("figure-motion-edge");
-    expect(figureMotionCard).toContain("figure-motion-glare");
-    expect(figureMotionCard).toContain("figure-motion-foil-texture");
-    expect(figureMotionCard).toContain("figure-motion-edge-shine");
     expect(styles).toContain(".figure-motion-edge");
-    expect(styles).toContain(".figure-motion-glare");
-    expect(styles).toContain(".figure-motion-foil-texture");
-    expect(styles).toContain(".figure-motion-edge-shine");
+    expect(figureMotionCard).not.toContain("figure-motion-glare");
+    expect(figureMotionCard).not.toContain("figure-motion-foil-texture");
+    expect(figureMotionCard).not.toContain("figure-motion-edge-shine");
+    expect(styles).not.toContain(".figure-motion-glare");
+    expect(styles).not.toContain(".figure-motion-foil-texture");
+    expect(styles).not.toContain(".figure-motion-edge-shine");
   });
 
-  it("pauses decorative foil sweeps while the final card is actively dragged", () => {
-    const activeMotionRule = styles.match(
-      /\.figure-motion-card\.is-motion-active \.figure-rarity-card::before,[\s\S]*?\.figure-motion-card\.is-motion-active \.figure-image-stage::after\s*\{([^}]*)\}/,
-    )?.[1] ?? "";
-
-    expect(activeMotionRule).toContain("animation-play-state: paused");
+  it("does not run decorative foil sweeps on the final slab card", () => {
+    expect(styles).not.toContain("foilFrameSpin");
+    expect(styles).not.toContain("foilSparkle");
+    expect(styles).not.toContain("foilGlow");
+    expect(styles).not.toMatch(/rarity-power-foil[\s\S]{0,240}animation:/);
+    expect(styles).not.toMatch(/rarity-foil[\s\S]{0,240}animation:/);
   });
 
   it("reuses final card motion bounds across pointer moves", () => {

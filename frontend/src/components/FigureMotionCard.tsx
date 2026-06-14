@@ -23,10 +23,8 @@ type FigureMotionCardProps = {
 
 type PendingMotion = {
   element: HTMLDivElement;
-  height: number;
   normalizedX: number;
   normalizedY: number;
-  width: number;
 };
 
 type MotionBounds = {
@@ -41,13 +39,11 @@ const motionVariableNames = [
   "--motion-rotate-y",
   "--motion-translate-x",
   "--motion-translate-y",
-  "--motion-texture-x",
-  "--motion-texture-y",
-  "--motion-texture-scale",
-  "--motion-glare-x",
-  "--motion-glare-y",
-  "--motion-foil-x",
-  "--motion-foil-y",
+  "--foil-bg-x",
+  "--foil-bg-y",
+  "--foil-bg-shift-x",
+  "--foil-bg-shift-y",
+  "--foil-bg-scale",
 ] as const;
 
 export function FigureMotionCard({
@@ -67,33 +63,29 @@ export function FigureMotionCard({
   const foilEffects = appConfig.foilEffects;
   const mobileTextureOpacityMultiplier =
     foilEffects.mobileTextureOpacityMultiplier;
+  const foilTextureOpacityIdle =
+    foilEffects.textureOpacityIdle * (1 + foilTintOpacity);
+  const foilTextureOpacityActive =
+    foilEffects.textureOpacityActive * (1 + foilTintOpacity * 0.72);
   const motionStyle = {
     "--motion-accent": accent,
     "--motion-accent-2": accent2,
     "--motion-foil-frame": foilFrame,
     "--motion-foil-hue": `${foilHue}deg`,
-    "--motion-foil-texture-opacity-idle": foilEffects.textureOpacityIdle,
-    "--motion-foil-texture-opacity-active": foilEffects.textureOpacityActive,
+    "--motion-foil-texture-opacity-idle": foilTextureOpacityIdle,
+    "--motion-foil-texture-opacity-active": foilTextureOpacityActive,
     "--motion-foil-texture-opacity-idle-mobile":
-      foilEffects.textureOpacityIdle * mobileTextureOpacityMultiplier,
+      foilTextureOpacityIdle * mobileTextureOpacityMultiplier,
     "--motion-foil-texture-opacity-active-mobile":
-      foilEffects.textureOpacityActive * mobileTextureOpacityMultiplier,
-    "--motion-foil-glare-opacity-idle": foilEffects.glareOpacityIdle,
-    "--motion-foil-glare-opacity-active": foilEffects.glareOpacityActive,
-    "--motion-foil-edge-shine-opacity": foilEffects.edgeShineOpacity,
-    "--motion-foil-center-mask-radius": `${foilEffects.centerMaskRadius}%`,
-    "--motion-foil-blend-mode": foilEffects.blendMode,
+      foilTextureOpacityActive * mobileTextureOpacityMultiplier,
     "--motion-foil-saturation": foilEffects.saturation,
     "--motion-foil-contrast": foilEffects.contrast,
-    "--motion-rarity-edge-opacity": `${Math.min(foilTintOpacity * 34, 16).toFixed(2)}%`,
+    "--motion-foil-tint-opacity": foilTintOpacity,
+    "--motion-foil-texture-url": foilTextureUrl
+      ? `url("${foilTextureUrl}")`
+      : "none",
     "--motion-glow": glow,
   } as CSSProperties;
-  const shouldShowFoilTexture = isFoil && Boolean(foilTextureUrl);
-  const textureStyle = shouldShowFoilTexture
-    ? ({
-        "--motion-foil-texture-url": `url("${foilTextureUrl}")`,
-      } as CSSProperties)
-    : undefined;
 
   useEffect(() => {
     return () => {
@@ -107,6 +99,10 @@ export function FigureMotionCard({
     if (event.pointerType === "touch") {
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    if (isReducedMotionPreferred()) {
+      return;
     }
 
     const element = event.currentTarget;
@@ -124,10 +120,8 @@ export function FigureMotionCard({
 
     pendingMotionRef.current = {
       element,
-      height: bounds.height,
       normalizedX,
       normalizedY,
-      width: bounds.width,
     };
 
     if (frameRef.current !== null) {
@@ -150,6 +144,10 @@ export function FigureMotionCard({
     if (event.pointerType === "touch") {
       event.preventDefault();
       event.stopPropagation();
+    }
+
+    if (isReducedMotionPreferred()) {
+      return;
     }
 
     event.currentTarget.classList.add("is-motion-active");
@@ -203,21 +201,6 @@ export function FigureMotionCard({
       <div className="figure-motion-shadow" aria-hidden="true" />
       <div className="figure-motion-surface">
         {children}
-        {isFoil && (
-          <span className="figure-motion-foil-effects" aria-hidden="true">
-            {shouldShowFoilTexture && (
-              <span
-                className="figure-motion-foil-texture"
-                style={textureStyle}
-              />
-            )}
-            <span className="figure-motion-glare" />
-            <span className="figure-motion-edge-shine" />
-          </span>
-        )}
-        {!isFoil && (
-          <span className="figure-motion-glare" aria-hidden="true" />
-        )}
         <span className="figure-motion-edge" aria-hidden="true" />
       </div>
     </div>
@@ -225,7 +208,7 @@ export function FigureMotionCard({
 }
 
 function applyMotion(
-  { element, height, normalizedX, normalizedY, width }: PendingMotion,
+  { element, normalizedX, normalizedY }: PendingMotion,
   isFoil: boolean,
 ) {
   const axisX = normalizedX * 2 - 1;
@@ -233,8 +216,6 @@ function applyMotion(
   const tilt = isFoil ? 16 : 11;
   const shift = isFoil ? 8 : 3;
   const distance = Math.hypot(axisX, axisY);
-  const logDistance = Math.log1p(distance * 10);
-  const textureRange = clamp(width / 340, 0.84, 1.36);
 
   element.style.setProperty(
     "--motion-rotate-x",
@@ -255,32 +236,24 @@ function applyMotion(
 
   if (isFoil) {
     element.style.setProperty(
-      "--motion-glare-x",
-      `${(normalizedX * 100).toFixed(2)}%`,
+      "--foil-bg-x",
+      `${(50 - axisX * 24).toFixed(2)}%`,
     );
     element.style.setProperty(
-      "--motion-glare-y",
-      `${(normalizedY * 100).toFixed(2)}%`,
+      "--foil-bg-y",
+      `${(50 - axisY * 18).toFixed(2)}%`,
     );
     element.style.setProperty(
-      "--motion-foil-x",
-      `${(100 - normalizedX * 100).toFixed(2)}%`,
+      "--foil-bg-shift-x",
+      `${(-axisX * 18).toFixed(2)}px`,
     );
     element.style.setProperty(
-      "--motion-foil-y",
-      `${(100 - normalizedY * 100).toFixed(2)}%`,
+      "--foil-bg-shift-y",
+      `${(-axisY * 14).toFixed(2)}px`,
     );
     element.style.setProperty(
-      "--motion-texture-x",
-      `${(axisX * 70 * textureRange).toFixed(2)}px`,
-    );
-    element.style.setProperty(
-      "--motion-texture-y",
-      `${(axisY * 110 * textureRange * clamp(height / 500, 0.82, 1.2)).toFixed(2)}px`,
-    );
-    element.style.setProperty(
-      "--motion-texture-scale",
-      `${(1 + logDistance / 10).toFixed(3)}`,
+      "--foil-bg-scale",
+      `${(1.12 + distance * 0.035).toFixed(3)}`,
     );
   }
 }
@@ -294,4 +267,8 @@ function resetMotion(element: HTMLDivElement) {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function isReducedMotionPreferred(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
