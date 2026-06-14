@@ -3,17 +3,17 @@ import { type CSSProperties, type ReactNode } from "react";
 import { appConfig } from "../../config/appConfig";
 import { getFoilFramePalette } from "./foilFramePalettes";
 
-type AnimatedFoilFrameProps = {
+type StaticFoilFrameProps = {
   active?: boolean;
   children: ReactNode;
   rarity: string;
 };
 
-export function AnimatedFoilFrame({
+export function StaticFoilFrame({
   active = true,
   children,
   rarity,
-}: AnimatedFoilFrameProps) {
+}: StaticFoilFrameProps) {
   const palette = active && appConfig.foilFrame.enabled
     ? getFoilFramePalette(rarity)
     : null;
@@ -32,15 +32,13 @@ export function AnimatedFoilFrame({
     "--foil-frame-glow-opacity": appConfig.foilFrame.glowOpacity,
     "--foil-frame-glow-opacity-mobile": appConfig.foilFrame.glowOpacity * 0.72,
     "--foil-frame-glow-opacity-reduced": appConfig.foilFrame.glowOpacity * 0.56,
-    "--foil-frame-duration": `${appConfig.foilFrame.animationDurationSeconds}s`,
-    "--foil-frame-mobile-duration": `${appConfig.foilFrame.mobileAnimationDurationSeconds}s`,
   } as CSSProperties;
 
   return (
-    <div className="animated-foil-frame-shell" style={frameStyle}>
-      <div className="animated-foil-frame-glow" aria-hidden="true" />
-      <div className="animated-foil-frame-border" aria-hidden="true" />
-      <div className="animated-foil-frame-inner">{children}</div>
+    <div className="static-foil-frame-shell" style={frameStyle}>
+      <div className="static-foil-frame-glow" aria-hidden="true" />
+      <div className="static-foil-frame-border" aria-hidden="true" />
+      <div className="static-foil-frame-inner">{children}</div>
     </div>
   );
 }

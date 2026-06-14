@@ -286,11 +286,12 @@ input[type="file"] {
 }
 
 .figure-card {
+  --figure-card-radius: 26px;
   width: min(100%, 342px);
   margin-inline: auto;
   overflow: hidden;
   border: 1px solid var(--glass-border);
-  border-radius: 26px;
+  border-radius: var(--figure-card-radius);
   background: var(--surface);
   box-shadow: var(--shadow-card);
 }
@@ -347,53 +348,56 @@ input[type="file"] {
 
 .figure-card-foil-frame {
   position: absolute;
-  inset: 7px;
-  z-index: 0;
-  overflow: hidden;
-  border-radius: 22px;
-  padding: 2px;
-  pointer-events: none;
-  contain: paint;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-}
-
-.figure-card-foil-frame::before,
-.figure-card-foil-frame::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-}
-
-.figure-card-foil-frame::before {
-  inset: -54%;
-  background:
-    conic-gradient(
-      from 0deg,
-      var(--foil-card-frame-primary),
-      var(--foil-card-frame-secondary),
-      var(--foil-card-frame-accent),
-      var(--foil-card-frame-primary),
-      var(--foil-card-frame-secondary),
-      var(--foil-card-frame-primary)
-    );
-  animation: foilFrameSpin 12s linear infinite;
-  transform-origin: 50% 50%;
-  will-change: transform;
-}
-
-.figure-card-foil-frame::after {
   inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  border: 3px solid color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
+  border-top-color: color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
+  border-right-color: var(--foil-card-frame-primary);
+  border-bottom-color: color-mix(in srgb, var(--foil-card-frame-secondary) 88%, rgba(0, 0, 0, 0.38));
+  border-left-color: color-mix(in srgb, var(--foil-card-frame-accent) 76%, rgba(255, 255, 255, 0.18));
   border-radius: inherit;
   box-shadow:
-    0 0 22px var(--foil-card-frame-glow),
-    inset 0 0 18px rgba(255, 255, 255, 0.12);
+    0 0 24px var(--foil-card-frame-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -12px 20px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  contain: paint;
+  transform: translateZ(0);
+}
+
+.figure-card-foil-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  clip-path: inset(0 round var(--figure-card-radius));
+  contain: paint;
+  opacity: var(--motion-foil-texture-opacity, var(--motion-foil-texture-opacity-idle, 0.24));
+  pointer-events: none;
+  transform: translateZ(0);
+  transition: opacity 160ms ease;
+}
+
+.figure-card-foil-bg::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  background-image: var(--foil-card-texture-url);
+  background-position: var(--foil-bg-x) var(--foil-bg-y);
+  background-size: 138% auto;
+  filter: saturate(var(--motion-foil-saturation, 1.18)) contrast(var(--motion-foil-contrast, 1.06)) brightness(1.08) hue-rotate(var(--motion-foil-hue, 0deg));
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transform:
+    translate3d(var(--foil-bg-shift-x), var(--foil-bg-shift-y), 0)
+    scale(var(--foil-bg-scale));
+  transform-origin: center;
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-position 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, background-position;
 }
 
 .figure-result-card {
@@ -411,30 +415,15 @@ input[type="file"] {
   --motion-rotate-y: 0deg;
   --motion-translate-x: 0px;
   --motion-translate-y: 0px;
-  --motion-texture-x: 0px;
-  --motion-texture-y: 0px;
-  --motion-texture-scale: 1;
-  --motion-glare-x: 50%;
-  --motion-glare-y: 50%;
-  --motion-foil-x: 50%;
-  --motion-foil-y: 50%;
+  --foil-bg-x: 50%;
+  --foil-bg-y: 50%;
+  --foil-bg-shift-x: 0px;
+  --foil-bg-shift-y: 0px;
+  --foil-bg-scale: 1.12;
   --motion-foil-hue: 0deg;
   --motion-foil-texture-opacity-idle: 0.07;
   --motion-foil-texture-opacity-active: 0.13;
   --motion-foil-texture-opacity: var(--motion-foil-texture-opacity-idle);
-  --motion-foil-glare-opacity-idle: 0.1;
-  --motion-foil-glare-opacity-active: 0.42;
-  --motion-foil-glare-opacity: var(--motion-foil-glare-opacity-idle);
-  --motion-foil-edge-shine-opacity: 0.24;
-  --motion-foil-center-mask-radius: 42%;
-  --motion-foil-readable-mask: radial-gradient(
-    ellipse at 50% 45%,
-    transparent 0%,
-    transparent calc(var(--motion-foil-center-mask-radius) - 12%),
-    rgba(0, 0, 0, 0.18) var(--motion-foil-center-mask-radius),
-    rgba(0, 0, 0, 0.62) 62%,
-    #000 82%
-  );
   position: relative;
   width: min(100%, 360px);
   display: grid;
@@ -462,16 +451,8 @@ input[type="file"] {
 }
 
 .figure-motion-card.figure-motion-foil.is-motion-active {
-  --motion-card-scale: 1.05;
+  --motion-card-scale: 1.035;
   --motion-foil-texture-opacity: var(--motion-foil-texture-opacity-active);
-  --motion-foil-glare-opacity: var(--motion-foil-glare-opacity-active);
-}
-
-.figure-motion-card.is-motion-active .figure-rarity-card::before,
-.figure-motion-card.is-motion-active .figure-card-body::before,
-.figure-motion-card.is-motion-active .figure-image-stage::before,
-.figure-motion-card.is-motion-active .figure-image-stage::after {
-  animation-play-state: paused;
 }
 
 .figure-motion-surface {
@@ -481,11 +462,9 @@ input[type="file"] {
   place-items: center;
 }
 
-.animated-foil-frame-shell {
-  --card-radius: 26px;
+.static-foil-frame-shell {
+  --card-radius: 14px;
   --foil-frame-width: 3px;
-  --foil-frame-duration: 9s;
-  --foil-frame-mobile-duration: 14s;
   position: relative;
   z-index: 2;
   width: 100%;
@@ -495,16 +474,16 @@ input[type="file"] {
   border-radius: calc(var(--card-radius) + 8px);
 }
 
-.animated-foil-frame-glow,
-.animated-foil-frame-border {
+.static-foil-frame-glow,
+.static-foil-frame-border {
   position: absolute;
   pointer-events: none;
 }
 
-.animated-foil-frame-glow {
-  inset: -18px;
+.static-foil-frame-glow {
+  inset: -14px;
   z-index: 0;
-  border-radius: calc(var(--card-radius) + 18px);
+  border-radius: calc(var(--card-radius) + 16px);
   background:
     radial-gradient(
       ellipse at 50% 14%,
@@ -516,48 +495,30 @@ input[type="file"] {
       var(--foil-frame-shadow),
       transparent 64%
     );
-  filter: blur(18px);
-  opacity: var(--foil-frame-glow-opacity, 0.72);
+  filter: blur(14px);
+  opacity: var(--foil-frame-glow-opacity, 0.56);
   transform: translateZ(0);
 }
 
-.animated-foil-frame-border {
-  inset: -5px;
+.static-foil-frame-border {
+  inset: -4px;
   z-index: 1;
   overflow: hidden;
-  border-radius: calc(var(--card-radius) + 7px);
-  padding: var(--foil-frame-width);
+  border: var(--foil-frame-width) solid color-mix(in srgb, var(--foil-frame-accent) 76%, rgba(255, 255, 255, 0.34));
+  border-top-color: color-mix(in srgb, var(--foil-frame-accent) 76%, rgba(255, 255, 255, 0.34));
+  border-right-color: var(--foil-frame-primary);
+  border-bottom-color: var(--foil-frame-secondary);
+  border-left-color: color-mix(in srgb, var(--foil-frame-accent) 64%, rgba(255, 255, 255, 0.16));
+  border-radius: calc(var(--card-radius) + 6px);
+  box-shadow:
+    0 0 18px var(--foil-frame-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.24);
   contain: paint;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
+  transform: translateZ(0);
 }
 
-.animated-foil-frame-border::before {
-  content: "";
-  position: absolute;
-  inset: -52%;
-  background:
-    conic-gradient(
-      from 0deg,
-      var(--foil-frame-primary),
-      var(--foil-frame-secondary),
-      var(--foil-frame-accent),
-      var(--foil-frame-primary),
-      var(--foil-frame-secondary),
-      var(--foil-frame-primary)
-    );
-  animation: foilFrameSpin var(--foil-frame-duration) linear infinite;
-  transform-origin: 50% 50%;
-  will-change: transform;
-}
-
-.animated-foil-frame-inner {
+.static-foil-frame-inner {
   position: relative;
   z-index: 2;
   width: 100%;
@@ -565,7 +526,7 @@ input[type="file"] {
   border-radius: var(--card-radius);
 }
 
-.animated-foil-frame-inner::after {
+.static-foil-frame-inner::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -601,61 +562,11 @@ input[type="file"] {
   pointer-events: none;
 }
 
-.figure-motion-foil-effects,
-.figure-motion-edge-shine,
-.figure-motion-glare,
 .figure-motion-edge {
   position: absolute;
   inset: 0;
   border-radius: 26px;
   pointer-events: none;
-}
-
-.figure-motion-foil-effects {
-  z-index: 3;
-  overflow: hidden;
-  clip-path: inset(0 round 24px);
-  contain: paint;
-  isolation: isolate;
-}
-
-.figure-motion-foil-texture {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  overflow: hidden;
-  border-radius: 26px;
-  background-image: var(--motion-foil-texture-url);
-  background-size: 180% 180%;
-  background-position: var(--motion-foil-x) var(--motion-foil-y);
-  clip-path: inset(0 round 24px);
-  contain: paint;
-  opacity: 0;
-  pointer-events: none;
-  transform:
-    translate3d(var(--motion-texture-x, 0px), var(--motion-texture-y, 0px), 0)
-    scale3d(var(--motion-texture-scale, 1), var(--motion-texture-scale, 1), 1);
-  filter: saturate(var(--motion-foil-saturation, 1.18)) contrast(var(--motion-foil-contrast, 1.06)) hue-rotate(var(--motion-foil-hue, 0deg));
-  mix-blend-mode: var(--motion-foil-blend-mode, screen);
-  -webkit-mask-image: var(--motion-foil-readable-mask);
-  mask-image: var(--motion-foil-readable-mask);
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  will-change: transform, background-position;
-}
-
-.figure-motion-glare {
-  z-index: 3;
-  background: radial-gradient(
-    circle at var(--motion-glare-x) var(--motion-glare-y),
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(255, 255, 255, 0.26) 13%,
-    rgba(255, 255, 255, 0.08) 28%,
-    transparent 58%
-  );
-  mix-blend-mode: screen;
-  opacity: var(--motion-foil-glare-opacity, 0.1);
-  transition: opacity 160ms ease;
 }
 
 .figure-motion-edge {
@@ -667,47 +578,12 @@ input[type="file"] {
     inset 0 -18px 30px rgba(0, 0, 0, 0.26);
 }
 
-.figure-motion-edge-shine {
-  z-index: 4;
-  background:
-    linear-gradient(
-      115deg,
-      transparent 0%,
-      transparent 32%,
-      rgba(255, 255, 255, 0.46) 48%,
-      rgba(255, 255, 255, 0.12) 58%,
-      transparent 78%
-    ),
-    radial-gradient(
-      ellipse at 50% 50%,
-      transparent 52%,
-      color-mix(in srgb, var(--motion-accent) var(--motion-rarity-edge-opacity, 10%), transparent) 82%,
-      transparent 100%
-    );
-  mix-blend-mode: screen;
-  opacity: var(--motion-foil-edge-shine-opacity, 0.24);
-  -webkit-mask-image: radial-gradient(
-    ellipse at 50% 48%,
-    transparent 0%,
-    transparent 56%,
-    rgba(0, 0, 0, 0.55) 68%,
-    #000 100%
-  );
-  mask-image: radial-gradient(
-    ellipse at 50% 48%,
-    transparent 0%,
-    transparent 56%,
-    rgba(0, 0, 0, 0.55) 68%,
-    #000 100%
-  );
-}
-
-.figure-motion-normal .figure-motion-glare {
-  opacity: 0;
-}
-
 .figure-motion-foil .figure-motion-shadow {
   opacity: 0.86;
+}
+
+.figure-motion-normal .figure-motion-shadow {
+  opacity: 0.72;
 }
 
 .figure-motion-foil .figure-motion-surface {
@@ -716,10 +592,6 @@ input[type="file"] {
 
 .figure-motion-foil .figure-card {
   transform: none;
-}
-
-.figure-motion-foil .figure-motion-foil-texture {
-  opacity: var(--motion-foil-texture-opacity, 0.24);
 }
 
 .figure-motion-foil .figure-motion-edge {
@@ -833,15 +705,15 @@ input[type="file"] {
   border-radius: 22px;
 }
 
-.figure-image-frame .animated-foil-frame-shell {
+.figure-image-frame .static-foil-frame-shell {
   --card-radius: 20px;
 }
 
-.figure-image-frame .animated-foil-frame-glow {
+.figure-image-frame .static-foil-frame-glow {
   inset: -12px;
   border-radius: 28px;
   filter: blur(14px);
-  opacity: var(--foil-frame-glow-opacity, 0.72);
+  opacity: var(--foil-frame-glow-opacity, 0.56);
   background:
     radial-gradient(
       ellipse at 50% 18%,
@@ -855,12 +727,12 @@ input[type="file"] {
     );
 }
 
-.figure-image-frame .animated-foil-frame-border {
+.figure-image-frame .static-foil-frame-border {
   inset: -4px;
   border-radius: 26px;
 }
 
-.figure-image-frame .animated-foil-frame-inner::after {
+.figure-image-frame .static-foil-frame-inner::after {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.42),
     inset 0 0 0 2px rgba(0, 0, 0, 0.24),
@@ -1136,9 +1008,6 @@ input[type="file"] {
     0 0 28px rgba(220, 244, 255, 0.22),
     0 0 38px rgba(255, 202, 243, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  animation:
-    rarityShine 3.6s ease-in-out infinite,
-    foilGlow 2.8s ease-in-out infinite;
 }
 
 .rarity-foil .rarity-badge-text {
@@ -1147,18 +1016,7 @@ input[type="file"] {
 }
 
 .rarity-foil::before {
-  content: "";
-  position: absolute;
-  inset: -55%;
-  background:
-    linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.88) 48%, transparent 58%),
-    radial-gradient(circle at 22% 36%, rgba(255, 255, 255, 0.95) 0 2px, transparent 3px),
-    radial-gradient(circle at 66% 26%, rgba(255, 255, 255, 0.82) 0 1px, transparent 3px),
-    radial-gradient(circle at 78% 68%, rgba(255, 255, 255, 0.86) 0 2px, transparent 4px);
-  opacity: 0;
-  transform: scale(0.9) rotate(0deg);
-  animation: foilSparkle 2.8s ease-in-out infinite;
-  pointer-events: none;
+  content: none;
 }
 
 .rarity-foil .rarity-badge-icon {
@@ -1184,9 +1042,6 @@ input[type="file"] {
     0 0 28px var(--foil-badge-glow),
     0 0 38px var(--foil-badge-glow-2),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  animation:
-    rarityShine 3.6s ease-in-out infinite,
-    foilGlow 2.8s ease-in-out infinite;
 }
 
 .rarity-foil-epic .rarity-badge-text,
@@ -1201,18 +1056,7 @@ input[type="file"] {
 .rarity-foil-mythic::before,
 .rarity-foil-legendary::before,
 .rarity-foil-founder-legendary::before {
-  content: "";
-  position: absolute;
-  inset: -55%;
-  background:
-    linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.88) 48%, transparent 58%),
-    radial-gradient(circle at 22% 36%, rgba(255, 255, 255, 0.95) 0 2px, transparent 3px),
-    radial-gradient(circle at 66% 26%, rgba(255, 255, 255, 0.82) 0 1px, transparent 3px),
-    radial-gradient(circle at 78% 68%, rgba(255, 255, 255, 0.86) 0 2px, transparent 4px);
-  opacity: 0;
-  transform: scale(0.9) rotate(0deg);
-  animation: foilSparkle 2.8s ease-in-out infinite;
-  pointer-events: none;
+  content: none;
 }
 
 .rarity-foil-epic::after,
@@ -1226,7 +1070,6 @@ input[type="file"] {
     transparent 62%
   );
   opacity: 0.75;
-  animation: raritySweep 4.8s ease-in-out infinite;
 }
 
 .rarity-foil-epic {
@@ -1312,75 +1155,37 @@ input[type="file"] {
     inset 0 0 0 1px color-mix(in srgb, var(--style-accent) 16%, transparent);
 }
 
-.rarity-power-foil {
-  border-color: rgba(255, 255, 255, 0.42);
-  background:
-    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.24) 45%, transparent 58%),
-    conic-gradient(from 120deg at 48% 48%, color-mix(in srgb, var(--style-accent) 38%, transparent), color-mix(in srgb, #d8f6ff 30%, transparent), color-mix(in srgb, #ffcaf3 32%, transparent), color-mix(in srgb, #fff2b0 28%, transparent), color-mix(in srgb, var(--style-accent-2) 30%, transparent)),
-    rgba(255, 255, 255, 0.062);
-  background-size: 220% 220%;
-  box-shadow:
-    0 18px 44px color-mix(in srgb, var(--style-glow) 100%, transparent),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  animation: foilGlow 4s ease-in-out infinite;
-}
-
-.rarity-power-foil.figure-rarity-card::before {
-  background:
-    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 45%, transparent 58%),
-    conic-gradient(from 120deg at 48% 48%, color-mix(in srgb, var(--style-accent) 42%, transparent), color-mix(in srgb, #d8f6ff 34%, transparent), color-mix(in srgb, #ffcaf3 34%, transparent), color-mix(in srgb, #fff2b0 32%, transparent), color-mix(in srgb, var(--style-accent-2) 32%, transparent));
-  animation: foilGlow 3.4s ease-in-out infinite;
-}
-
-.rarity-power-foil .figure-card-body::before {
-  animation: foilSparkle 3.2s ease-in-out infinite;
-}
-
-.rarity-power-foil .figure-image-stage::before,
-.rarity-power-foil-epic .figure-image-stage::before,
-.rarity-power-foil-mythic .figure-image-stage::before,
-.rarity-power-foil-legendary .figure-image-stage::before,
-.rarity-power-foil-founder .figure-image-stage::before {
-  z-index: 1;
-  background:
-    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.78) 0 2px, transparent 4px),
-    radial-gradient(circle at 74% 20%, rgba(216, 246, 255, 0.68) 0 2px, transparent 5px),
-    radial-gradient(circle at 64% 76%, rgba(255, 202, 243, 0.64) 0 2px, transparent 5px),
-    conic-gradient(from 130deg at 50% 50%, transparent, color-mix(in srgb, var(--style-accent) 18%, transparent), rgba(255, 202, 243, 0.16), rgba(255, 242, 176, 0.14), transparent);
-  opacity: 0.78;
-  mix-blend-mode: screen;
-}
-
-.rarity-power-foil .figure-image-stage::after,
-.rarity-power-foil-epic .figure-image-stage::after,
-.rarity-power-foil-mythic .figure-image-stage::after,
-.rarity-power-foil-legendary .figure-image-stage::after,
-.rarity-power-foil-founder .figure-image-stage::after {
-  z-index: 3;
-  background:
-    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 47%, transparent 61%),
-    conic-gradient(from 160deg at 50% 50%, transparent, rgba(216, 246, 255, 0.18), rgba(255, 202, 243, 0.18), rgba(255, 242, 176, 0.16), transparent);
-  opacity: 0.58;
-  mix-blend-mode: screen;
-  background-size: 210% 210%;
-  animation: foilGlow 3.4s ease-in-out infinite;
-}
-
+.rarity-power-foil,
 .rarity-power-foil-epic,
 .rarity-power-foil-mythic,
 .rarity-power-foil-legendary,
 .rarity-power-foil-founder {
-  border-color: rgba(255, 255, 255, 0.38);
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.28);
+  --figure-card-radius: 20px;
   background:
-    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.22) 45%, transparent 58%),
-    conic-gradient(from 120deg at 48% 48%, var(--foil-card-palette)),
-    rgba(255, 255, 255, 0.062);
-  background-size: 220% 220%;
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.32), transparent 25%),
+    radial-gradient(circle at 82% 96%, color-mix(in srgb, var(--style-accent) 42%, transparent), transparent 35%),
+    radial-gradient(circle at 16% 72%, color-mix(in srgb, var(--style-accent-2) 28%, transparent), transparent 34%),
+    linear-gradient(138deg, rgba(255, 255, 255, 0.18), transparent 24% 62%, rgba(255, 255, 255, 0.075)),
+    linear-gradient(
+      146deg,
+      color-mix(in srgb, var(--style-accent) calc(var(--foil-card-tint-opacity, 0.34) * 100%), transparent),
+      color-mix(in srgb, var(--style-accent) 16%, rgba(255, 255, 255, 0.035)) 46%,
+      color-mix(in srgb, var(--style-accent-2) 28%, transparent)
+    ),
+    rgba(255, 255, 255, 0.085);
+  -webkit-backdrop-filter: blur(8px) saturate(1.8) brightness(1.15) contrast(1.05);
+  backdrop-filter: blur(8px) saturate(1.5) brightness(1.1);
   box-shadow:
-    0 18px 44px var(--foil-card-glow),
-    0 0 34px var(--foil-card-glow-2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  animation: foilGlow 4s ease-in-out infinite;
+    0 0 48px color-mix(in srgb, var(--style-glow) 92%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--style-accent) 18%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 12px rgba(255, 255, 255, 0.2),
+    inset -10px -24px 46px rgba(0, 0, 0, 0.32),
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 30px 70px rgba(0, 0, 0, 0.48);
 }
 
 .rarity-power-foil-epic {
@@ -1407,21 +1212,98 @@ input[type="file"] {
   --foil-card-glow-2: rgba(11, 31, 122, 0.34);
 }
 
+.rarity-power-foil.figure-rarity-card::before,
 .rarity-power-foil-epic.figure-rarity-card::before,
 .rarity-power-foil-mythic.figure-rarity-card::before,
 .rarity-power-foil-legendary.figure-rarity-card::before,
 .rarity-power-foil-founder.figure-rarity-card::before {
+  inset: 8px;
+  z-index: 1;
+  border-radius: 12px;
   background:
-    linear-gradient(118deg, transparent 0 34%, rgba(255, 255, 255, 0.42) 45%, transparent 58%),
-    conic-gradient(from 120deg at 48% 48%, var(--foil-card-palette));
-  animation: foilGlow 3.4s ease-in-out infinite;
+    linear-gradient(122deg, rgba(255, 255, 255, 0.34), transparent 18% 56%, rgba(255, 255, 255, 0.08) 72%, transparent),
+    radial-gradient(ellipse at 28% 0%, rgba(255, 255, 255, 0.3), transparent 38%),
+    radial-gradient(circle at 78% 78%, color-mix(in srgb, var(--style-accent) 24%, transparent), transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--style-accent) 12%, rgba(255, 255, 255, 0.12)), transparent 30%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.42),
+    inset 0 0 40px rgba(255, 255, 255, 0.09);
+  opacity: 1;
 }
 
+.rarity-power-foil.figure-rarity-card::after,
+.rarity-power-foil-epic.figure-rarity-card::after,
+.rarity-power-foil-mythic.figure-rarity-card::after,
+.rarity-power-foil-legendary.figure-rarity-card::after,
+.rarity-power-foil-founder.figure-rarity-card::after {
+  display: none;
+}
+
+.rarity-power-foil .figure-image-frame,
+.rarity-power-foil-epic .figure-image-frame,
+.rarity-power-foil-mythic .figure-image-frame,
+.rarity-power-foil-legendary .figure-image-frame,
+.rarity-power-foil-founder .figure-image-frame {
+  z-index: 2;
+  border-radius: 14px;
+}
+
+.rarity-power-foil .figure-image-stage,
+.rarity-power-foil-epic .figure-image-stage,
+.rarity-power-foil-mythic .figure-image-stage,
+.rarity-power-foil-legendary .figure-image-stage,
+.rarity-power-foil-founder .figure-image-stage {
+  border-radius: 14px;
+}
+
+.rarity-power-foil .figure-image-stage::before,
+.rarity-power-foil-epic .figure-image-stage::before,
+.rarity-power-foil-mythic .figure-image-stage::before,
+.rarity-power-foil-legendary .figure-image-stage::before,
+.rarity-power-foil-founder .figure-image-stage::before {
+  z-index: 1;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, transparent 52%, rgba(0, 0, 0, 0.18));
+  opacity: 0.52;
+  mix-blend-mode: screen;
+}
+
+.rarity-power-foil .figure-image-stage::after,
+.rarity-power-foil-epic .figure-image-stage::after,
+.rarity-power-foil-mythic .figure-image-stage::after,
+.rarity-power-foil-legendary .figure-image-stage::after,
+.rarity-power-foil-founder .figure-image-stage::after {
+  z-index: 3;
+  background: none;
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 -24px 36px rgba(0, 0, 0, 0.18);
+}
+
+.rarity-power-foil .figure-card-body::before,
 .rarity-power-foil-epic .figure-card-body::before,
 .rarity-power-foil-mythic .figure-card-body::before,
 .rarity-power-foil-legendary .figure-card-body::before,
 .rarity-power-foil-founder .figure-card-body::before {
-  animation: foilSparkle 3.2s ease-in-out infinite;
+  content: none;
+}
+
+.rarity-power-foil .figure-card-body,
+.rarity-power-foil-epic .figure-card-body,
+.rarity-power-foil-mythic .figure-card-body,
+.rarity-power-foil-legendary .figure-card-body,
+.rarity-power-foil-founder .figure-card-body {
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 13px;
+  padding: 9px 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.12)),
+    rgba(12, 10, 13, 0.34);
 }
 
 .foil-rarity-preview {
@@ -2224,40 +2106,6 @@ input[type="file"] {
   }
 }
 
-@keyframes foilSparkle {
-  0%,
-  100% {
-    opacity: 0;
-    transform: translateX(-18%) scale(0.9) rotate(0deg);
-  }
-  42% {
-    opacity: 0.95;
-    transform: translateX(10%) scale(1.08) rotate(10deg);
-  }
-  62% {
-    opacity: 0.28;
-    transform: translateX(18%) scale(1.02) rotate(14deg);
-  }
-}
-
-@keyframes foilGlow {
-  0%,
-  100% {
-    background-position: 0% 50%, 20% 50%, 0 0;
-    filter: saturate(1.08);
-  }
-  50% {
-    background-position: 100% 50%, 84% 50%, 0 0;
-    filter: saturate(1.35);
-  }
-}
-
-@keyframes foilFrameSpin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
 @media (max-width: 720px) {
   .game-panel {
     padding: 28px 16px;
@@ -2300,11 +2148,7 @@ input[type="file"] {
 }
 
 @media (pointer: coarse) {
-  .animated-foil-frame-border::before {
-    animation-duration: var(--foil-frame-mobile-duration);
-  }
-
-  .animated-foil-frame-glow {
+  .static-foil-frame-glow {
     filter: blur(14px);
     opacity: var(--foil-frame-glow-opacity-mobile, 0.52);
   }
@@ -2325,15 +2169,16 @@ input[type="file"] {
     transform: none !important;
   }
 
-  .figure-motion-edge-shine {
-    opacity: 0.18 !important;
+  .figure-motion-card,
+  .figure-motion-card.is-motion-active {
+    --foil-bg-x: 50%;
+    --foil-bg-y: 50%;
+    --foil-bg-shift-x: 0px;
+    --foil-bg-shift-y: 0px;
+    --foil-bg-scale: 1.12;
   }
 
-  .figure-motion-glare {
-    opacity: 0 !important;
-  }
-
-  .animated-foil-frame-glow {
+  .static-foil-frame-glow {
     opacity: var(--foil-frame-glow-opacity-reduced, 0.4);
   }
 }
