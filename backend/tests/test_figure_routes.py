@@ -261,6 +261,46 @@ def test_get_my_figure_returns_existing_figure(client: TestClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_my_figure_rewrites_local_media_url_to_current_public_base(
+    client: TestClient,
+    session_maker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        settings,
+        "PUBLIC_MEDIA_BASE_URL",
+        "https://current.example/media",
+    )
+    headers = auth_headers(client)
+    created = client.post("/figures/me", headers=headers).json()
+
+    async with session_maker() as session:
+        figure = await session.get(Figure, UUID(created["id"]))
+        assert figure is not None
+        figure.status = "completed"
+        figure.image_url = (
+            "https://stale-tunnel.trycloudflare.com/media/generated-figures/"
+            "figure.png"
+        )
+        figure.foil_image_url = "/media/generated-figures/figure-foil.png"
+        session.add(figure)
+        await session.commit()
+
+    response = client.get("/figures/me", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert (
+        payload["image_url"]
+        == "https://current.example/media/generated-figures/figure.png"
+    )
+    assert (
+        payload["foil_image_url"]
+        == "https://current.example/media/generated-figures/figure-foil.png"
+    )
+
+
+@pytest.mark.asyncio
 async def test_one_user_cannot_have_two_figures(
     client: TestClient,
     session_maker: async_sessionmaker[AsyncSession],
@@ -566,10 +606,12 @@ def test_upload_figure_photo_requires_auth(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_upload_figure_photo_saves_file_and_updates_figure(
+@pytest.mark.asyncio
+async def test_upload_figure_photo_saves_file_and_updates_figure(
     client: TestClient,
     tmp_path: pytest.TempPathFactory,
     monkeypatch: pytest.MonkeyPatch,
+    session_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
     monkeypatch.setattr(settings, "PUBLIC_MEDIA_BASE_URL", "http://testserver/media")
@@ -591,6 +633,11 @@ def test_upload_figure_photo_saves_file_and_updates_figure(
     assert payload["source_photo_url"].endswith(".png")
     saved_files = list((tmp_path / "figure-photos").glob("*.png"))
     assert len(saved_files) == 1
+    async with session_maker() as session:
+        stored = await session.get(Figure, UUID(payload["id"]))
+        assert stored is not None
+        assert stored.source_photo_url is not None
+        assert stored.source_photo_url.startswith("/media/figure-photos/")
 
 
 def test_upload_figure_photo_rejects_invalid_mime(
@@ -761,6 +808,10 @@ async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     assert payload["job"]["result_image_url"].endswith(
         "/media/mock/generated-figure.png"
     )
+    assert (
+        payload["job"]["result_image_url"]
+        == "http://testserver/media/mock/generated-figure.png"
+    )
     assert payload["figure"]["status"] == "completed"
     assert payload["figure"]["next_step"] == "completed"
     assert payload["figure"]["image_url"] == payload["job"]["result_image_url"]
@@ -776,6 +827,20 @@ async def test_generate_figure_creates_completed_mock_job_and_updates_figure(
     assert (tmp_path / "mock" / "generated-figure.png").exists()
     assert (tmp_path / "mock" / "generated-figure-foil.png").exists()
     assert await count_generation_jobs(session_maker) == 1
+    async with session_maker() as session:
+        stored_figure = await session.get(Figure, UUID(payload["figure"]["id"]))
+        stored_job = await session.get(GenerationJob, UUID(payload["job"]["id"]))
+        assert stored_figure is not None
+        assert stored_job is not None
+        assert stored_figure.image_url == "/media/mock/generated-figure.png"
+        assert (
+            stored_figure.foil_image_url == "/media/mock/generated-figure-foil.png"
+        )
+        assert stored_job.result_image_url == "/media/mock/generated-figure.png"
+        assert (
+            stored_job.foil_result_image_url
+            == "/media/mock/generated-figure-foil.png"
+        )
 
     refreshed = client.get("/figures/me", headers=headers)
     assert refreshed.status_code == 200
@@ -835,11 +900,11 @@ async def test_generate_figure_writes_generation_audit_log(
     assert completed["generation"]["foil_prompt"] == payload["job"]["foil_prompt"]
     assert (
         completed["generation"]["result_image_url"]
-        == payload["job"]["result_image_url"]
+        == "/media/mock/generated-figure.png"
     )
     assert (
         completed["generation"]["foil_result_image_url"]
-        == payload["job"]["foil_result_image_url"]
+        == "/media/mock/generated-figure-foil.png"
     )
     assert completed["generation"]["error_code"] is None
     assert completed["generation"]["error_message"] is None
@@ -1116,6 +1181,15 @@ async def test_generate_figure_openai_saves_result_and_prompt(
     assert payload["figure"]["prompt"] == payload["job"]["prompt"]
     assert list((tmp_path / "generated-figures").glob("*.png"))
     assert await count_generation_jobs(session_maker) == 1
+    async with session_maker() as session:
+        stored_figure = await session.get(Figure, UUID(payload["figure"]["id"]))
+        stored_job = await session.get(GenerationJob, UUID(payload["job"]["id"]))
+        assert stored_figure is not None
+        assert stored_job is not None
+        assert stored_figure.image_url is not None
+        assert stored_job.result_image_url is not None
+        assert stored_figure.image_url.startswith("/media/generated-figures/")
+        assert stored_job.result_image_url.startswith("/media/generated-figures/")
 
 
 @pytest.mark.asyncio

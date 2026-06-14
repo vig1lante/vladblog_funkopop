@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from PIL import Image, ImageDraw, ImageFont
 
 from app.core.config import settings
+from app.services.media_urls import build_media_url
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,7 @@ class LocalMediaStorage:
             len(data),
         )
 
-        return (
-            f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/figure-photos/{file_name}"
-        )
+        return build_media_url(f"figure-photos/{file_name}")
 
     def save_telegram_profile_photo(self, user_id: UUID, data: bytes) -> str:
         directory = self.root_path / "telegram-photos"
@@ -50,10 +49,7 @@ class LocalMediaStorage:
             len(data),
         )
 
-        return (
-            f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/telegram-photos/"
-            f"{file_name}"
-        )
+        return build_media_url(f"telegram-photos/{file_name}")
 
     def ensure_mock_generated_figure(
         self,
@@ -92,7 +88,7 @@ class LocalMediaStorage:
             file_path.relative_to(self.root_path),
         )
 
-        return f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/mock/{file_name}"
+        return build_media_url(f"mock/{file_name}")
 
     def save_generated_figure(
         self,
@@ -115,7 +111,4 @@ class LocalMediaStorage:
             len(data),
         )
 
-        return (
-            f"{settings.PUBLIC_MEDIA_BASE_URL.rstrip('/')}/generated-figures/"
-            f"{file_name}"
-        )
+        return build_media_url(f"generated-figures/{file_name}")

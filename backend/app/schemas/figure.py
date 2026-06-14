@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field, field_serializer
 
 from app.enums.presets import (
     FigureAccessory,
@@ -11,6 +11,7 @@ from app.enums.presets import (
     SourcePhotoType,
 )
 from app.enums.rarity import Rarity
+from app.services.media_urls import public_media_url
 
 FRIENDLY_TELEGRAM_PHOTO_ERROR = (
     "Не удалось получить фото из Telegram. Загрузи своё фото или создай "
@@ -70,6 +71,16 @@ class FigureResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer(
+        "source_photo_url",
+        "image_url",
+        "thumbnail_url",
+        "share_image_url",
+        "foil_image_url",
+    )
+    def serialize_media_url(self, value: str | None) -> str | None:
+        return public_media_url(value)
+
     @computed_field
     @property
     def next_step(self) -> str:
@@ -117,6 +128,10 @@ class GenerationJobResponse(BaseModel):
     completed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("result_image_url", "foil_result_image_url")
+    def serialize_media_url(self, value: str | None) -> str | None:
+        return public_media_url(value)
 
 
 class FigureGenerationResponse(BaseModel):

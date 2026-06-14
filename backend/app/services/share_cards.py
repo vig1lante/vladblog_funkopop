@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import urlparse
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
@@ -10,6 +9,7 @@ from app.core.config import settings
 from app.enums.presets import get_preset_label
 from app.models.figure import Figure
 from app.models.user import User
+from app.services.media_urls import local_media_relative_path
 
 CARD_WIDTH = 1200
 CARD_HEIGHT = 1720
@@ -134,21 +134,9 @@ def _local_media_path(image_url: str | None) -> Path | None:
     if not image_url:
         return None
 
-    parsed = urlparse(image_url)
-    public_base = urlparse(settings.PUBLIC_MEDIA_BASE_URL.rstrip("/"))
-    relative_path: str | None = None
-
-    if parsed.scheme and parsed.netloc:
-        if parsed.scheme != public_base.scheme or parsed.netloc != public_base.netloc:
-            return None
-        base_path = public_base.path.rstrip("/")
-        if not parsed.path.startswith(f"{base_path}/"):
-            return None
-        relative_path = parsed.path[len(base_path) :].lstrip("/")
-    elif parsed.path.startswith("/media/"):
-        relative_path = parsed.path.removeprefix("/media/")
-    else:
-        relative_path = parsed.path.lstrip("/")
+    relative_path = local_media_relative_path(image_url)
+    if relative_path is None:
+        return None
 
     root = Path(settings.LOCAL_STORAGE_PATH).resolve()
     candidate = (root / relative_path).resolve()

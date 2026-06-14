@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
+
+from app.services.media_urls import public_media_url
 
 
 class UserResponse(BaseModel):
@@ -17,3 +19,7 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("photo_url")
+    def serialize_photo_url(self, value: str | None) -> str | None:
+        return public_media_url(value)

@@ -23,6 +23,7 @@ from app.repositories.figures import FiguresRepository
 from app.services.figures import has_generation_presets
 from app.services.generation_audit import write_generation_audit_event
 from app.services.media_storage import LocalMediaStorage
+from app.services.media_urls import local_media_relative_path
 from app.services.prompts import build_figure_prompt
 from app.services.rarity import get_base_rarity, get_foil_rarity
 from app.services.telegram_photos import download_telegram_profile_photo
@@ -594,16 +595,11 @@ def _open_reference_image(source_photo_url: str):
 
 
 def _local_media_path_from_url(source_photo_url: str) -> Path | None:
+    relative_path = local_media_relative_path(source_photo_url)
+    if relative_path is not None:
+        return Path(settings.LOCAL_STORAGE_PATH) / relative_path
+
     parsed = urlparse(source_photo_url)
-    if not parsed.scheme and source_photo_url.startswith("/media/"):
-        relative_path = source_photo_url.removeprefix("/media/")
-        return Path(settings.LOCAL_STORAGE_PATH) / relative_path
-
-    base = settings.PUBLIC_MEDIA_BASE_URL.rstrip("/")
-    if source_photo_url.startswith(f"{base}/"):
-        relative_path = source_photo_url.removeprefix(f"{base}/")
-        return Path(settings.LOCAL_STORAGE_PATH) / relative_path
-
     content_type, _ = mimetypes.guess_type(source_photo_url)
     if parsed.scheme == "file" and content_type and content_type.startswith("image/"):
         path = Path(parsed.path)
