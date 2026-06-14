@@ -36,3 +36,4 @@ project_data/logs/*
 .superpowers/
 
 /db_data
+.playwright-cli/
