@@ -669,6 +669,27 @@ describe("frontend styles", () => {
     expect(styles).not.toContain(".figure-motion-edge-shine");
   });
 
+  it("keeps foil final card edges as one clean rounded slab", () => {
+    const foilMotionEdgeRule = styles.match(
+      /\.figure-motion-foil\s+\.figure-motion-edge\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilCardInnerRule = styles.match(
+      /\.figure-card\[class\*="rarity-power-foil"\]::after\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilCardFrameRule = styles.match(
+      /\.figure-card-foil-frame\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+
+    expect(foilMotionEdgeRule).toContain("display: none");
+    expect(foilCardInnerRule).toContain("border-radius: inherit");
+    expect(foilCardInnerRule).not.toContain("inset: 1px");
+    expect(foilCardInnerRule).not.toContain("inset 0 0 0 1px");
+    expect(foilCardFrameRule).toContain("inset: 1px");
+    expect(foilCardFrameRule).toContain(
+      "border-radius: calc(var(--figure-card-radius) - 1px)",
+    );
+  });
+
   it("does not run decorative foil sweeps on the final slab card", () => {
     expect(styles).not.toContain("foilFrameSpin");
     expect(styles).not.toContain("foilSparkle");

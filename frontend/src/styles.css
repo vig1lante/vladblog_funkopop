@@ -348,19 +348,19 @@ input[type="file"] {
 
 .figure-card-foil-frame {
   position: absolute;
-  inset: 0;
+  inset: 1px;
   z-index: 4;
   overflow: hidden;
-  border: 3px solid color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
+  border: 1px solid color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
   border-top-color: color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
   border-right-color: var(--foil-card-frame-primary);
   border-bottom-color: color-mix(in srgb, var(--foil-card-frame-secondary) 88%, rgba(0, 0, 0, 0.38));
   border-left-color: color-mix(in srgb, var(--foil-card-frame-accent) 76%, rgba(255, 255, 255, 0.18));
-  border-radius: inherit;
+  border-radius: calc(var(--figure-card-radius) - 1px);
   box-shadow:
-    0 0 24px var(--foil-card-frame-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -12px 20px rgba(0, 0, 0, 0.22);
+    0 0 20px var(--foil-card-frame-glow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.2);
   pointer-events: none;
   contain: paint;
   transform: translateZ(0);
@@ -501,19 +501,19 @@ input[type="file"] {
 }
 
 .static-foil-frame-border {
-  inset: -4px;
+  inset: -2px;
   z-index: 1;
   overflow: hidden;
-  border: var(--foil-frame-width) solid color-mix(in srgb, var(--foil-frame-accent) 76%, rgba(255, 255, 255, 0.34));
+  border: 1px solid color-mix(in srgb, var(--foil-frame-accent) 76%, rgba(255, 255, 255, 0.34));
   border-top-color: color-mix(in srgb, var(--foil-frame-accent) 76%, rgba(255, 255, 255, 0.34));
   border-right-color: var(--foil-frame-primary);
   border-bottom-color: var(--foil-frame-secondary);
   border-left-color: color-mix(in srgb, var(--foil-frame-accent) 64%, rgba(255, 255, 255, 0.16));
-  border-radius: calc(var(--card-radius) + 6px);
+  border-radius: calc(var(--card-radius) + 2px);
   box-shadow:
-    0 0 18px var(--foil-frame-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -10px 16px rgba(0, 0, 0, 0.24);
+    0 0 14px var(--foil-frame-glow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.22);
   contain: paint;
   transform: translateZ(0);
 }
@@ -595,11 +595,22 @@ input[type="file"] {
 }
 
 .figure-motion-foil .figure-motion-edge {
+  display: none;
   border-color: rgba(255, 255, 255, 0.34);
   box-shadow:
     inset 0 0 28px rgba(255, 255, 255, 0.18),
     inset 0 -22px 30px rgba(0, 0, 0, 0.32),
     0 0 24px color-mix(in srgb, var(--motion-glow) 48%, transparent);
+}
+
+.figure-card[class*="rarity-power-foil"] {
+  border-color: transparent;
+}
+
+.figure-card[class*="rarity-power-foil"]::after {
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 -38px 74px rgba(0, 0, 0, 0.2);
 }
 
 .foil-version-toggle {
@@ -728,8 +739,8 @@ input[type="file"] {
 }
 
 .figure-image-frame .static-foil-frame-border {
-  inset: -4px;
-  border-radius: 26px;
+  inset: -2px;
+  border-radius: 22px;
 }
 
 .figure-image-frame .static-foil-frame-inner::after {
