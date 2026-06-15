@@ -679,15 +679,57 @@ describe("frontend styles", () => {
     const foilCardFrameRule = styles.match(
       /\.figure-card-foil-frame\s*\{([^}]*)\}/,
     )?.[1] ?? "";
+    const foilCardDecorationRule = styles.match(
+      /\.rarity-power-foil\.figure-rarity-card::before,\s*\.rarity-power-foil-epic\.figure-rarity-card::before,\s*\.rarity-power-foil-mythic\.figure-rarity-card::before,\s*\.rarity-power-foil-legendary\.figure-rarity-card::before,\s*\.rarity-power-foil-founder\.figure-rarity-card::before\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilImageFrameRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image-frame,\s*\.rarity-power-foil-epic\s+\.figure-image-frame,\s*\.rarity-power-foil-mythic\s+\.figure-image-frame,\s*\.rarity-power-foil-legendary\s+\.figure-image-frame,\s*\.rarity-power-foil-founder\s+\.figure-image-frame\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilImageStageRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image-stage,\s*\.rarity-power-foil-epic\s+\.figure-image-stage,\s*\.rarity-power-foil-mythic\s+\.figure-image-stage,\s*\.rarity-power-foil-legendary\s+\.figure-image-stage,\s*\.rarity-power-foil-founder\s+\.figure-image-stage\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilImageRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image,\s*\.rarity-power-foil-epic\s+\.figure-image,\s*\.rarity-power-foil-mythic\s+\.figure-image,\s*\.rarity-power-foil-legendary\s+\.figure-image,\s*\.rarity-power-foil-founder\s+\.figure-image\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilStaticShellRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image-frame\s+\.static-foil-frame-shell,\s*\.rarity-power-foil-epic\s+\.figure-image-frame\s+\.static-foil-frame-shell,\s*\.rarity-power-foil-mythic\s+\.figure-image-frame\s+\.static-foil-frame-shell,\s*\.rarity-power-foil-legendary\s+\.figure-image-frame\s+\.static-foil-frame-shell,\s*\.rarity-power-foil-founder\s+\.figure-image-frame\s+\.static-foil-frame-shell\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilStaticBorderRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image-frame\s+\.static-foil-frame-border,\s*\.rarity-power-foil-epic\s+\.figure-image-frame\s+\.static-foil-frame-border,\s*\.rarity-power-foil-mythic\s+\.figure-image-frame\s+\.static-foil-frame-border,\s*\.rarity-power-foil-legendary\s+\.figure-image-frame\s+\.static-foil-frame-border,\s*\.rarity-power-foil-founder\s+\.figure-image-frame\s+\.static-foil-frame-border\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
+    const foilStaticInnerRule = styles.match(
+      /\.rarity-power-foil\s+\.figure-image-frame\s+\.static-foil-frame-inner,\s*\.rarity-power-foil-epic\s+\.figure-image-frame\s+\.static-foil-frame-inner,\s*\.rarity-power-foil-mythic\s+\.figure-image-frame\s+\.static-foil-frame-inner,\s*\.rarity-power-foil-legendary\s+\.figure-image-frame\s+\.static-foil-frame-inner,\s*\.rarity-power-foil-founder\s+\.figure-image-frame\s+\.static-foil-frame-inner\s*\{([^}]*)\}/,
+    )?.[1] ?? "";
 
     expect(foilMotionEdgeRule).toContain("display: none");
     expect(foilCardInnerRule).toContain("border-radius: inherit");
     expect(foilCardInnerRule).not.toContain("inset: 1px");
     expect(foilCardInnerRule).not.toContain("inset 0 0 0 1px");
-    expect(foilCardFrameRule).toContain("inset: 1px");
-    expect(foilCardFrameRule).toContain(
+    expect(foilCardFrameRule).toContain("inset: 0");
+    expect(foilCardFrameRule).toContain("border-radius: inherit");
+    expect(foilCardFrameRule).not.toContain(
       "border-radius: calc(var(--figure-card-radius) - 1px)",
     );
+    expect(foilCardDecorationRule).toContain("inset: 0");
+    expect(foilCardDecorationRule).toContain("border-radius: inherit");
+    expect(foilCardDecorationRule).not.toContain("inset: 8px");
+    expect(foilCardDecorationRule).not.toContain("border-radius: 12px");
+    expect(foilImageFrameRule).toContain(
+      "--figure-image-radius: var(--figure-foil-image-radius)",
+    );
+    expect(foilImageFrameRule).toContain(
+      "--figure-image-frame-radius: var(--figure-foil-image-radius)",
+    );
+    for (const rule of [
+      foilImageFrameRule,
+      foilImageStageRule,
+      foilImageRule,
+      foilStaticShellRule,
+      foilStaticBorderRule,
+      foilStaticInnerRule,
+    ]) {
+      expect(rule).toContain("border-radius: var(--figure-foil-image-radius)");
+    }
   });
 
   it("does not run decorative foil sweeps on the final slab card", () => {

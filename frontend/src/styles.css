@@ -287,6 +287,9 @@ input[type="file"] {
 
 .figure-card {
   --figure-card-radius: 26px;
+  --figure-image-radius: 20px;
+  --figure-image-frame-radius: calc(var(--figure-image-radius) + 2px);
+  --figure-foil-image-radius: 14px;
   width: min(100%, 342px);
   margin-inline: auto;
   overflow: hidden;
@@ -348,7 +351,7 @@ input[type="file"] {
 
 .figure-card-foil-frame {
   position: absolute;
-  inset: 1px;
+  inset: 0;
   z-index: 4;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--foil-card-frame-accent) 70%, rgba(255, 255, 255, 0.34));
@@ -356,9 +359,10 @@ input[type="file"] {
   border-right-color: var(--foil-card-frame-primary);
   border-bottom-color: color-mix(in srgb, var(--foil-card-frame-secondary) 88%, rgba(0, 0, 0, 0.38));
   border-left-color: color-mix(in srgb, var(--foil-card-frame-accent) 76%, rgba(255, 255, 255, 0.18));
-  border-radius: calc(var(--figure-card-radius) - 1px);
+  border-radius: inherit;
+  clip-path: inset(0 round var(--figure-card-radius));
   box-shadow:
-    0 0 20px var(--foil-card-frame-glow),
+    inset 0 0 18px var(--foil-card-frame-glow),
     inset 0 0 0 1px rgba(255, 255, 255, 0.18),
     inset 0 -10px 18px rgba(0, 0, 0, 0.2);
   pointer-events: none;
@@ -705,7 +709,7 @@ input[type="file"] {
   background:
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--style-accent) 12%, transparent), transparent 38%),
     transparent;
-  border-radius: 20px;
+  border-radius: var(--figure-image-radius);
 }
 
 .figure-image-frame {
@@ -713,16 +717,16 @@ input[type="file"] {
   width: 100%;
   display: grid;
   isolation: isolate;
-  border-radius: 22px;
+  border-radius: var(--figure-image-frame-radius);
 }
 
 .figure-image-frame .static-foil-frame-shell {
-  --card-radius: 20px;
+  --card-radius: var(--figure-image-radius);
 }
 
 .figure-image-frame .static-foil-frame-glow {
   inset: -12px;
-  border-radius: 28px;
+  border-radius: calc(var(--figure-image-radius) + 8px);
   filter: blur(14px);
   opacity: var(--foil-frame-glow-opacity, 0.56);
   background:
@@ -740,7 +744,7 @@ input[type="file"] {
 
 .figure-image-frame .static-foil-frame-border {
   inset: -2px;
-  border-radius: 22px;
+  border-radius: var(--figure-image-frame-radius);
 }
 
 .figure-image-frame .static-foil-frame-inner::after {
@@ -773,7 +777,7 @@ input[type="file"] {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border-radius: 20px;
+  border-radius: var(--figure-image-radius);
   padding: 24px;
   color: var(--text);
   background:
@@ -790,7 +794,7 @@ input[type="file"] {
   aspect-ratio: 1;
   display: block;
   border: 1px solid color-mix(in srgb, var(--style-accent) 26%, transparent);
-  border-radius: 20px;
+  border-radius: var(--figure-image-radius);
   box-shadow:
     0 12px 30px rgba(0, 0, 0, 0.24),
     0 0 22px color-mix(in srgb, var(--style-glow) 42%, transparent),
@@ -1228,9 +1232,9 @@ input[type="file"] {
 .rarity-power-foil-mythic.figure-rarity-card::before,
 .rarity-power-foil-legendary.figure-rarity-card::before,
 .rarity-power-foil-founder.figure-rarity-card::before {
-  inset: 8px;
+  inset: 0;
   z-index: 1;
-  border-radius: 12px;
+  border-radius: inherit;
   background:
     linear-gradient(122deg, rgba(255, 255, 255, 0.34), transparent 18% 56%, rgba(255, 255, 255, 0.08) 72%, transparent),
     radial-gradient(ellipse at 28% 0%, rgba(255, 255, 255, 0.3), transparent 38%),
@@ -1257,8 +1261,10 @@ input[type="file"] {
 .rarity-power-foil-mythic .figure-image-frame,
 .rarity-power-foil-legendary .figure-image-frame,
 .rarity-power-foil-founder .figure-image-frame {
+  --figure-image-radius: var(--figure-foil-image-radius);
+  --figure-image-frame-radius: var(--figure-foil-image-radius);
   z-index: 2;
-  border-radius: 14px;
+  border-radius: var(--figure-foil-image-radius);
 }
 
 .rarity-power-foil .figure-image-stage,
@@ -1266,7 +1272,40 @@ input[type="file"] {
 .rarity-power-foil-mythic .figure-image-stage,
 .rarity-power-foil-legendary .figure-image-stage,
 .rarity-power-foil-founder .figure-image-stage {
-  border-radius: 14px;
+  border-radius: var(--figure-foil-image-radius);
+}
+
+.rarity-power-foil .figure-image,
+.rarity-power-foil-epic .figure-image,
+.rarity-power-foil-mythic .figure-image,
+.rarity-power-foil-legendary .figure-image,
+.rarity-power-foil-founder .figure-image {
+  border-radius: var(--figure-foil-image-radius);
+}
+
+.rarity-power-foil .figure-image-frame .static-foil-frame-shell,
+.rarity-power-foil-epic .figure-image-frame .static-foil-frame-shell,
+.rarity-power-foil-mythic .figure-image-frame .static-foil-frame-shell,
+.rarity-power-foil-legendary .figure-image-frame .static-foil-frame-shell,
+.rarity-power-foil-founder .figure-image-frame .static-foil-frame-shell {
+  --card-radius: var(--figure-foil-image-radius);
+  border-radius: var(--figure-foil-image-radius);
+}
+
+.rarity-power-foil .figure-image-frame .static-foil-frame-border,
+.rarity-power-foil-epic .figure-image-frame .static-foil-frame-border,
+.rarity-power-foil-mythic .figure-image-frame .static-foil-frame-border,
+.rarity-power-foil-legendary .figure-image-frame .static-foil-frame-border,
+.rarity-power-foil-founder .figure-image-frame .static-foil-frame-border {
+  border-radius: var(--figure-foil-image-radius);
+}
+
+.rarity-power-foil .figure-image-frame .static-foil-frame-inner,
+.rarity-power-foil-epic .figure-image-frame .static-foil-frame-inner,
+.rarity-power-foil-mythic .figure-image-frame .static-foil-frame-inner,
+.rarity-power-foil-legendary .figure-image-frame .static-foil-frame-inner,
+.rarity-power-foil-founder .figure-image-frame .static-foil-frame-inner {
+  border-radius: var(--figure-foil-image-radius);
 }
 
 .rarity-power-foil .figure-image-stage::before,
